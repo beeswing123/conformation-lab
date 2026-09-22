@@ -347,6 +347,8 @@ class Viewer{
     this.renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:true,alpha:true});
     this.renderer.setPixelRatio(Math.min(devicePixelRatio,2));
     this.scene=new THREE.Scene();
+    this.scene.background=new THREE.Color('#0d141f');
+    this._updateBg();   // 读取 CSS 变量 --vw-bg 设置场景背景
     this.camera=new THREE.PerspectiveCamera(42,1,0.1,100);
     this.cam0=cam0||{r:7.2,phi:1.18,theta:0.85,tx:0,ty:0,tz:0.1};
     this.cam={...this.cam0};
@@ -373,6 +375,11 @@ class Viewer{
     this.ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
     this.camera.aspect=w/h; this.camera.updateProjectionMatrix();
     this.w=w; this.h=h;
+  }
+  _updateBg(){
+    // 从 CSS 变量 --vw-bg 读取背景色,日/夜切换时同步更新
+    const v=getComputedStyle(document.body).getPropertyValue('--vw-bg').trim()||'#0d141f';
+    this.scene.background=new THREE.Color(v);
   }
   _bind(){
     let drag=false,lx=0,ly=0,pinch=0;
@@ -1199,6 +1206,30 @@ window.addEventListener('resize', ()=>{
   _mobilRzT=setTimeout(applyMobileLayout, 150);
 });
 applyMobileLayout();
+
+/* ============================================================
+   日间/夜间模式切换
+============================================================ */
+const THEME_KEY='conformation-lab-theme';
+function applyTheme(light){
+  document.body.classList.toggle('light',light);
+  const btn=document.getElementById('theme-btn');
+  if(btn) btn.textContent=light?'☀️':'🌙';
+  // 同步更新所有 viewer 的场景背景
+  Object.values(viewers).forEach(v=>v._updateBg && v._updateBg());
+}
+(function initTheme(){
+  // 默认跟随系统,已保存的优先
+  const saved=localStorage.getItem(THEME_KEY);
+  const light = saved!==null ? saved==='light' : matchMedia('(prefers-color-scheme: light)').matches;
+  applyTheme(light);
+  const btn=document.getElementById('theme-btn');
+  if(btn) btn.addEventListener('click',()=>{
+    const now=!document.body.classList.contains('light');
+    localStorage.setItem(THEME_KEY,now?'light':'dark');
+    applyTheme(now);
+  });
+})();
 
 let lastTick=0;
 function anyPlayActive(){return ['eth','but','chair'].some(k=>plays[k]);}

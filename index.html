@@ -230,29 +230,35 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .progress-wrap{margin-bottom:2px;height:4px}
   .rail-foot .pct{font-size:10px;text-align:right}
   main{overflow:visible;height:auto}
-  .wrap{padding:12px 11px 70px}
-  .page-head{margin-bottom:12px}
-  .page-head h2{font-size:18px}
-  .page-head .sub{font-size:12.5px}
-  /* viewer 占视口高度一半,但不超过 380px */
-  .viewer-wrap{height:min(50vh,380px)}
+  .wrap{padding:10px 11px 60px}
+  /* 页头压缩:标签胶囊 + 标题 + 说明(最多2行),把首屏让给模型和控制台 */
+  .page-head{margin-bottom:8px}
+  .page-head h2{font-size:17px;line-height:1.35}
+  .page-head .sub{font-size:12px;margin-top:3px;line-height:1.45;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .tagline{margin-bottom:6px;padding:1px 9px;font-size:11px}
+  /* viewer 高度随屏高自适应:矮屏自动缩小,保证标题/模型/工具栏/首组控件同屏 */
+  .viewer-wrap{height:min(44vh,320px);height:clamp(190px,calc(100dvh - 368px),320px)}
+  .vbadge{top:8px;left:8px;gap:4px}
   .newman-canvas, .chart-canvas{height:170px}
   /* subviews 移出 viewer card 后独立成卡片 */
   .subviews{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
     border-radius:var(--radius);box-shadow:var(--shadow);margin-top:12px;overflow:hidden}
   /* 工具栏横向滚动,按钮不挤压 */
-  .toolbar{gap:6px;padding:8px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
+  .toolbar{gap:6px;padding:6px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
   .toolbar::-webkit-scrollbar{display:none}
-  .tbtn{font-size:12px;padding:8px 12px;flex:none;white-space:nowrap}
+  .tbtn{font-size:12px;padding:7px 11px;flex:none;white-space:nowrap}
   .chip-row{flex-wrap:wrap;gap:6px}
-  .chip{font-size:12px;padding:8px 12px}
+  .chip{font-size:12px;padding:7px 11px}
+  /* 覆盖 HTML 内联的 10px 行间距,省垂直空间 */
+  .ctl-block .chip-row[style],.ctl-block .seg[style]{margin-bottom:6px !important}
   .seg button{font-size:12px;padding:8px 11px}
   .state-name{font-size:15px}
   .state-grid{gap:7px}
   .stat{padding:8px 9px}
   .stat .v{font-size:14.5px}
-  .ctl-block{margin-bottom:13px}
-  .ctl-block h4{font-size:12px;margin-bottom:7px}
+  .ctl-block{margin-bottom:11px}
+  .ctl-block h4{font-size:12px;margin-bottom:5px}
   /* 滑块加大,易拖 */
   input[type=range]{height:22px;background:transparent}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;
@@ -265,9 +271,9 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .data-strip{flex-direction:column}
   .data-strip div + div{border-left:none;border-top:1px solid var(--line)}
   .data-strip .n{font-size:16px}
-  .grid{gap:12px}
-  .card-b{padding:12px 13px}
-  .card-h{padding:11px 14px;font-size:13px}
+  .grid{gap:10px}
+  .card-b{padding:10px 12px}
+  .card-h{padding:9px 13px;font-size:13px}
   .ubtn{padding:12px 26px;font-size:14.5px;width:100%;text-align:center}
   .foot-understand{flex-direction:column;gap:10px;align-items:stretch}
   .foot-understand .principle{text-align:center;font-size:12px}
@@ -282,12 +288,25 @@ tr:hover td{background:rgba(79,156,255,.04)}
   }
 }
 @media(max-width:480px){
-  .wrap{padding:10px 9px 70px}
-  .viewer-wrap{height:min(45vh,300px)}
-  .page-head h2{font-size:16.5px}
+  .wrap{padding:8px 9px 52px}
+  /* 主流手机逻辑宽多为 360–430:矮屏自动缩模型,保证控制台首屏可见 */
+  .viewer-wrap{height:min(40vh,260px);height:clamp(185px,calc(100dvh - 406px),320px)}
+  .page-head{margin-bottom:5px}
+  .page-head h2{font-size:15.5px}
+  .tagline{margin-bottom:3px}
+  /* 06 控制台层级最多,该页说明在手机上只留一行 */
+  body[data-page="disub"] .page-head .sub{-webkit-line-clamp:1}
+  .toolbar{padding:5px 10px}
+  .grid{gap:8px}
+  .card-h{padding:8px 13px}
+  .card-b{padding:9px 11px}
+  .ctl-block h4{margin-bottom:3px}
+  .ctl-block .chip-row[style],.ctl-block .seg[style]{margin-bottom:4px !important}
+  .seg button{padding:6px 11px}
   .tbtn, .chip{font-size:11.5px;padding:7px 10px}
   .brand h1{font-size:12.5px}
   .nav-item{padding:5px 8px;font-size:12px}
+  .ctl-block{margin-bottom:10px}
   .newman-canvas, .chart-canvas{height:150px}
 }
 </style>

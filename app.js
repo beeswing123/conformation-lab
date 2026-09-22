@@ -1296,6 +1296,7 @@ store.understood=store.understood||{};
 const PAGES=['intro','ethane','butane','rings','chair','axeq','disub'];
 const PAGE_RENDER={ethane:renderEthane,butane:renderButane,rings:renderRings,chair:renderChair,axeq:renderAxeq,disub:renderDisub};
 function showPage(name){
+  document.body.dataset.page=name;   // 供 CSS 按页微调(如手机端 06 页更紧凑)
   document.querySelectorAll('.page').forEach(p=>p.classList.toggle('show',p.id==='page-'+name));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.page===name));
   store.lastPage=name;localStorage.setItem(STORE_KEY,JSON.stringify(store));

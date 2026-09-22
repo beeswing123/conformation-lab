@@ -353,6 +353,7 @@ class Viewer{
     this.cam0=cam0||{r:7.2,phi:1.18,theta:0.85,tx:0,ty:0,tz:0.1};
     this.cam={...this.cam0};
     this.opts={vdw:true,vdwScale:.6,rotate:true,labels:false,angleLabel:false,flags:false,aeColor:true};
+    this.panMode=false;   // 平移模式:开启后单指/左键拖动 = 平移
     this._lastInteract=0;
     this.group=new THREE.Group(); this.scene.add(this.group);
     this.lg=new THREE.Group(); this.scene.add(this.lg);
@@ -365,7 +366,8 @@ class Viewer{
     this._resize();
   }
   resetView(){ stopTweens(); const a=this.cam0,b=this.cam;
-    tweenTo(420,t=>{b.r=lerp(b.r,a.r,t);b.phi=lerp(b.phi,a.phi,t);b.theta=lerp(b.theta,a.theta,t);b.tz=lerp(b.tz,a.tz,t);}); }
+    tweenTo(420,t=>{b.r=lerp(b.r,a.r,t);b.phi=lerp(b.phi,a.phi,t);b.theta=lerp(b.theta,a.theta,t);
+      b.tx=lerp(b.tx,a.tx,t);b.ty=lerp(b.ty,a.ty,t);b.tz=lerp(b.tz,a.tz,t);}); }
   _resize(){
     const w=this.wrap.clientWidth,h=this.wrap.clientHeight;
     if(!w)return;
@@ -382,7 +384,7 @@ class Viewer{
     this.scene.background=new THREE.Color(v);
   }
   _bind(){
-    let drag=false,lx=0,ly=0,pinch=0;
+    let drag=false,panning=false,lx=0,ly=0,pinch=0,mx=0,my=0;
     // 用户拖拽视角时,关闭"视角自转"按钮(让用户感知自己接管了)
     const takeOver=()=>{
       if(this.opts.rotate){
@@ -392,26 +394,59 @@ class Viewer{
         if(rotBtn) rotBtn.classList.remove('on');
       }
     };
-    const down=e=>{drag=true;lx=e.clientX;ly=e.clientY;this._lastInteract=performance.now();};
+    // 平移:模型跟手。dx>0(手指右)→ 视点左移;dy>0(手指下)→ 视点上移
+    const pan=(dx,dy)=>{
+      this.camera.updateMatrixWorld();
+      const right=new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld,0);
+      const up=new THREE.Vector3().setFromMatrixColumn(this.camera.matrixWorld,1);
+      const k=this.cam.r*.0018;
+      this.cam.tx=clamp(this.cam.tx-right.x*dx*k+up.x*dy*k,-5,5);
+      this.cam.ty=clamp(this.cam.ty-right.y*dx*k+up.y*dy*k,-4,4);
+      this.cam.tz=clamp(this.cam.tz-right.z*dx*k+up.z*dy*k,-5,5);
+    };
+    const down=e=>{
+      drag=true;
+      panning=this.panMode||e.button===2;   // 平移模式 或 鼠标右键
+      lx=e.clientX;ly=e.clientY;this._lastInteract=performance.now();
+    };
     this.canvas.addEventListener('pointerdown',e=>{this.canvas.setPointerCapture(e.pointerId);down(e);});
     this.canvas.addEventListener('pointermove',e=>{
       if(!drag)return;
       const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;
       if(e.pointerType==='touch'&&this._d2)return;
       if(dx||dy) takeOver();
-      this.cam.theta-=dx*.006; this.cam.phi=clamp(this.cam.phi-dy*.006,.15,Math.PI-.15);
+      if(panning){ pan(dx,dy); }
+      else { this.cam.theta-=dx*.006; this.cam.phi=clamp(this.cam.phi-dy*.006,.15,Math.PI-.15); }
       this._lastInteract=performance.now();
     });
-    const up=()=>{if(drag){this._lastInteract=performance.now();}drag=false;};
+    const up=()=>{if(drag){this._lastInteract=performance.now();}drag=false;panning=false;};
     window.addEventListener('pointerup',up);
+    // 右键拖动平移:阻止右键菜单
+    this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+    // 双击复位视角
+    this.canvas.addEventListener('dblclick',()=>this.resetView());
     this.canvas.addEventListener('wheel',e=>{e.preventDefault();
       this.cam.r=clamp(this.cam.r*(1+e.deltaY*.0011),3.2,20);this._lastInteract=performance.now();},{passive:false});
     this.canvas.addEventListener('touchstart',e=>{
-      if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pinch=Math.hypot(dx,dy);this._d2=true;drag=false;this._lastInteract=performance.now();}
+      if(e.touches.length===2){
+        const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
+        pinch=Math.hypot(dx,dy);
+        mx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+        my=(e.touches[0].clientY+e.touches[1].clientY)/2;
+        this._d2=true;drag=false;this._lastInteract=performance.now();
+      }
     },{passive:true});
     this.canvas.addEventListener('touchmove',e=>{
-      if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
-        const d=Math.hypot(dx,dy);this.cam.r=clamp(this.cam.r*pinch/d,3.2,20);pinch=d;this._lastInteract=performance.now();}
+      if(e.touches.length===2){
+        const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
+        // 捏合缩放
+        const d=Math.hypot(dx,dy);this.cam.r=clamp(this.cam.r*pinch/d,3.2,20);pinch=d;
+        // 双指中点拖动 = 平移
+        const cx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+        const cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
+        pan(cx-mx,cy-my); mx=cx; my=cy;
+        this._lastInteract=performance.now();
+      }
     },{passive:true});
     this.canvas.addEventListener('touchend',()=>this._d2=false);
   }
@@ -746,6 +781,11 @@ function bindToolbar(id,vw,onChange){
         vw.opts.vdwScale=nxt;
         vw.opts.vdw=nxt>0;
         syncVdwBtn(btn,vw);
+      }else if(key==='pan'){
+        // 平移模式:切换后单指/左键拖动模型上下左右移动
+        vw.panMode=!vw.panMode;
+        btn.classList.toggle('on',vw.panMode);
+        btn.textContent=vw.panMode?'✥ 平移中':'✥ 平移';
       }else{
         vw.opts[optKey]=!vw.opts[optKey];
         btn.classList.toggle('on',vw.opts[optKey]);
@@ -1195,7 +1235,7 @@ function applyMobileLayout(){
   });
   // 移动端操作提示:让用户知道可以单指拖拽旋转模型
   document.querySelectorAll('.hint3d').forEach(h=>{
-    h.textContent = isMobile ? '单指拖拽旋转模型 · 双指缩放' : '鼠标拖动旋转视角 · 滚轮缩放';
+    h.textContent = isMobile ? '单指旋转 · 双指拖动平移/捏合缩放 · 双击复位' : '左键旋转 · 右键平移 · 滚轮缩放 · 双击复位';
   });
   // 切换布局后 viewer 尺寸可能变化,触发重测
   Object.values(viewers).forEach(v=>v._resize && v._resize());

@@ -7,7 +7,14 @@ const V = (x,y,z)=>new THREE.Vector3(x,y,z);
 const D2R = Math.PI/180;
 const S3 = 2*Math.SQRT2/3;          // 0.9428 四面体方向水平分量
 const CC = 1.54, CH = 1.09;         // 键长 Å
-const VDW = { C:1.70, H:1.20 };
+const CX = { F:1.39, Cl:1.78, Br:1.93, I:2.14, O:1.43 };  // C–杂原子键长
+const VDW = { C:1.70, H:1.20, F:1.47, Cl:1.75, Br:1.85, I:1.98, O:1.52 };
+// A 值:取代基处于 a 键的 1,3-二直立惩罚 (kJ/mol)，越大越偏好 e 键
+const AVAL = { H:0, F:0.5, Cl:1.7, Br:1.8, I:1.9, OH:3.9, Me:7.6, Et:7.9, iPr:9.2, tBu:21 };
+const GROUP_LABEL = { F:'F', Cl:'Cl', Br:'Br', OH:'OH', Me:'Me', Et:'Et', iPr:'i-Pr', tBu:'t-Bu' };
+const GROUP_CN = { H:'氢', F:'氟', Cl:'氯', Br:'溴', OH:'羟基', Me:'甲基', Et:'乙基', iPr:'异丙基', tBu:'叔丁基' };
+const GROUP_EN = { H:'H', F:'F', Cl:'Cl', Br:'Br', OH:'OH', Me:'Me', Et:'Et', iPr:'i-Pr', tBu:'t-Bu' };
+let LANG='cn';   // 界面语言,需在所有渲染函数之前声明(函数内会读取)
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const smooth=t=>t*t*(3-2*t);
@@ -64,21 +71,24 @@ function buildEthane(phi){
     if(d<hh){hh=d;ai=2+i;bi=5+j;}
   }
   measures.push({a:ai,b:bi,text:(hh*100).toFixed(0)+' pm',safe:hh>=2.40});
-  return {atoms,bonds,measures,info:{hh}, front:0, back:1};
+  // 每个碳标一个代表性 H–C–H 键角(四面体 ~109.5°)
+  const ang=(c,h1,h2)=>atoms[h1].p.clone().sub(atoms[c].p).angleTo(atoms[h2].p.clone().sub(atoms[c].p))/D2R;
+  const angleData=[{at:0,n1:2,n2:3,v:ang(0,2,3)},{at:1,n1:5,n2:6,v:ang(1,5,6)}];
+  return {atoms,bonds,measures,info:{hh},angleData, front:0, back:1};
 }
 
-// ---- 甲基（在中心碳 M 上，键轴 u 指向所连中心碳）----
-function attachMethyl(atoms, bonds, M, u, chainTag){
+// ---- 甲基（在中心碳 M 上，键轴 u 指向所连中心碳；tag 决定配色）----
+function attachMethyl(atoms, bonds, M, u, tag='me', label){
   const e1 = Math.abs(u.y)>0.9 ? V(1,0,0) : V(0,1,0).sub(u.clone().multiplyScalar(u.y)).normalize();
   const e2 = new THREE.Vector3().crossVectors(u,e1).normalize();
   const mc = atoms.length;
-  atoms.push({el:'C',p:M,tag:chainTag==='tb'?'tb':'me',label:chainTag==='tb'?'CH₃':'Me'});
+  atoms.push({el:'C',p:M,tag,label:label||(tag==='tb'?'CH₃':'CH₃'),big:true});
   for(let i=0;i<3;i++){
     const a=i*120*D2R;
     const dir=u.clone().multiplyScalar(-1/3)
       .add(e1.clone().multiplyScalar(S3*Math.cos(a)))
       .add(e2.clone().multiplyScalar(S3*Math.sin(a))).normalize();
-    atoms.push({el:'H',p:M.clone().add(dir.multiplyScalar(CH)),tag:chainTag==='tb'?'tbH':'meH'});
+    atoms.push({el:'H',p:M.clone().add(dir.multiplyScalar(CH)),tag:tag+'H'});
     bonds.push([mc,atoms.length-1]);
   }
   return mc;
@@ -88,7 +98,7 @@ function attachTBu(atoms,bonds,S,u){
   const e1 = Math.abs(u.y)>0.9 ? V(1,0,0) : V(0,1,0).sub(u.clone().multiplyScalar(u.y)).normalize();
   const e2 = new THREE.Vector3().crossVectors(u,e1).normalize();
   const cen=atoms.length;
-  atoms.push({el:'C',p:S,tag:'tb',label:'t-Bu'});
+  atoms.push({el:'C',p:S,tag:'tb',label:'t-Bu',big:true});
   for(let i=0;i<3;i++){
     const a=(i*120+30)*D2R;
     const dir=u.clone().multiplyScalar(-1/3)
@@ -99,6 +109,77 @@ function attachTBu(atoms,bonds,S,u){
     bonds.push([cen,mc]);
   }
   return cen;
+}
+// 通用 sp³ 碳:在 pos 放一个碳并补 n 个 H(n=1/2/3),键轴 u 指向所连环
+const _basis=u=>{
+  const e1=Math.abs(u.y)>.9?V(1,0,0):V(0,1,0).sub(u.clone().multiplyScalar(u.y)).normalize();
+  return [e1,new THREE.Vector3().crossVectors(u,e1).normalize()];
+};
+function addCHn(atoms,bonds,pos,u,n,tag,lbl,angOff=0){
+  const [e1,e2]=_basis(u);
+  const ci=atoms.length;
+  atoms.push({el:'C',p:pos,tag,label:lbl,big:true});
+  for(let i=0;i<n;i++){
+    const a=(angOff+i*(360/n))*D2R;
+    const dir=u.clone().multiplyScalar(-1/3)
+      .add(e1.clone().multiplyScalar(S3*Math.cos(a)))
+      .add(e2.clone().multiplyScalar(S3*Math.sin(a))).normalize();
+    atoms.push({el:'H',p:pos.clone().add(dir.multiplyScalar(CH)),tag:tag+'H'});
+    bonds.push([ci,atoms.length-1]);
+  }
+  return ci;
+}
+// 环上取代基:k=环碳 idx,p=环碳位置,d=取代键单位方向(由环向外),kind=基团名
+function attachGroup(atoms,bonds,k,p,d,kind){
+  // 单原子卤素
+  if(CX[kind]&&kind!=='O'){
+    const ai=atoms.length;
+    atoms.push({el:kind,p:p.clone().add(d.clone().multiplyScalar(CX[kind])),
+      tag:kind,label:GROUP_LABEL[kind],big:true});
+    bonds.push([k,ai]); return ai;
+  }
+  if(kind==='OH'){
+    const [e1]=_basis(d);
+    const oi=atoms.length;
+    atoms.push({el:'O',p:p.clone().add(d.clone().multiplyScalar(CX.O)),tag:'OH',label:'OH',big:true});
+    bonds.push([k,oi]);
+    const hd=d.clone().multiplyScalar(-1/3).add(e1.clone().multiplyScalar(S3)).normalize();
+    atoms.push({el:'H',p:atoms[oi].p.clone().add(hd.multiplyScalar(.96)),tag:'OHH'});
+    bonds.push([oi,atoms.length-1]);
+    return oi;
+  }
+  const u=d.clone().negate();
+  const C1=p.clone().add(d.clone().multiplyScalar(CC));
+  if(kind==='Me'){ const mc=attachMethyl(atoms,bonds,C1,u,'me'); atoms[mc].big=true; bonds.push([k,mc]); return mc; }
+  if(kind==='tBu'){ const tc=attachTBu(atoms,bonds,C1,u); bonds.push([k,tc]); return tc; }
+  if(kind==='Et'){
+    const c1=addCHn(atoms,bonds,C1,u,2,'et','CH₂',30);
+    bonds.push([k,c1]);
+    const C2=C1.clone().add(d.clone().multiplyScalar(CC));
+    const c2=attachMethyl(atoms,bonds,C2,d.clone().negate(),'et'); atoms[c2].big=true;
+    bonds.push([c1,c2]); return c1;
+  }
+  if(kind==='iPr'){
+    // 中心 CH:1 个 H + 2 个甲基,三等分绕 u
+    const [e1,e2]=_basis(u);
+    const c1=atoms.length;
+    atoms.push({el:'C',p:C1,tag:'ip',label:'CH',big:true});
+    bonds.push([k,c1]);
+    const hdir=u.clone().multiplyScalar(-1/3).add(e1.clone().multiplyScalar(S3)).normalize();
+    atoms.push({el:'H',p:C1.clone().add(hdir.multiplyScalar(CH)),tag:'ipH'});
+    bonds.push([c1,atoms.length-1]);
+    for(let i=0;i<2;i++){
+      const a=((i?240:120))*D2R;
+      const md=u.clone().multiplyScalar(-1/3).add(e1.clone().multiplyScalar(S3*Math.cos(a)))
+        .add(e2.clone().multiplyScalar(S3*Math.sin(a))).normalize();
+      const Mp=C1.clone().add(md.clone().multiplyScalar(CC));
+      const mc=attachMethyl(atoms,bonds,Mp,md,'ip'); atoms[mc].big=true;
+      bonds.push([c1,mc]);
+    }
+    return c1;
+  }
+  // 兜底:甲基
+  const mc=attachMethyl(atoms,bonds,C1,u,'me'); bonds.push([k,mc]); return mc;
 }
 
 // ---- 丁烷（theta = 两甲基二面角）----
@@ -127,7 +208,7 @@ function buildButane(theta){
   bonds.push([0,1]);
   const mm=atoms[meF].p.distanceTo(atoms[meB].p);
   measures.push({a:meF,b:meB,text:(mm*100).toFixed(0)+' pm',safe:mm>=3.40});
-  return {atoms,bonds,measures,info:{mm},front:0,back:1};
+  return {atoms,bonds,measures,info:{mm},angleData:computeAngles(atoms,bonds),front:0,back:1};
 }
 
 // ---- 环上碳的两根 H（局部四面体）----
@@ -142,6 +223,22 @@ function ringHDirs(p,n1,n2){
   const h1=bis.clone().multiplyScalar(-c1).add(n.clone().multiplyScalar(c2));
   const h2=bis.clone().multiplyScalar(-c1).add(n.clone().multiplyScalar(-c2));
   return [h1.normalize(),h2.normalize()];
+}
+
+// 通用键角:为有 ≥2 个非氢邻居的原子,取前两个(环/主链键在 bonds 中先入列)算 X–C–Y
+function computeAngles(atoms,bonds){
+  const adj=atoms.map(()=>[]);
+  bonds.forEach(([a,b])=>{adj[a].push(b);adj[b].push(a);});
+  const out=[];
+  atoms.forEach((at,c)=>{
+    if(at.el==='H')return;
+    const heavy=adj[c].filter(n=>atoms[n].el!=='H');
+    if(heavy.length<2)return;
+    const n1=heavy[0],n2=heavy[1];
+    const v=atoms[n1].p.clone().sub(at.p).angleTo(atoms[n2].p.clone().sub(at.p))/D2R;
+    out.push({at:c,n1,n2,v});
+  });
+  return out;
 }
 
 // ---- 环烷烃（3/4/5/6椅）----
@@ -241,7 +338,7 @@ function buildChairMorph(t){
   }
   if(boatness>0.35&&bi>=0){ atoms[bi].tag='flag'; atoms[bj].tag='flag'; }
   const measures=boatness>0.12&&bi>=0?[{a:bi,b:bj,text:(best*100).toFixed(0)+' pm',safe:best>=2.40}]:[];
-  return {atoms,bonds,measures,info:{flag:best,boatness},front:1,back:2};
+  return {atoms,bonds,measures,info:{flag:best,boatness},angleData:computeAngles(atoms,bonds),front:1,back:2};
 }
 
 /* ---- 分析型椅式（a/e 键严格准确），flip=0/1 ----
@@ -298,18 +395,8 @@ function buildSubChair(subs, t){
     if(s&&s.kind!=='H'){
       const {d,startType,endType}=slot(s.face);
       const typeNow = t<.5?startType:endType;
-      const u=d.clone().negate();
-      if(s.kind==='Me'){
-        const M=p.clone().add(d.clone().multiplyScalar(CC));
-        const mc=attachMethyl(atoms,bonds,M,u,'me');
-        bonds.push([k,mc]);
-        atoms[mc].slot=typeNow; atoms[mc]._sub=true;
-      }else{
-        const S=p.clone().add(d.clone().multiplyScalar(CC));
-        const cen=attachTBu(atoms,bonds,S,u);
-        bonds.push([k,cen]);
-        atoms[cen].slot=typeNow; atoms[cen]._sub=true;
-      }
+      const gi=attachGroup(atoms,bonds,k,p,d,s.kind);
+      atoms[gi].slot=typeNow; atoms[gi]._sub=true;
       // 补一个环 H（取与取代方向偏差最大的四面体方向）
       const dd=ringHDirs(p,p1,p2).sort((x,y)=>x.angleTo(d)-y.angleTo(d)).pop();
       atoms.push({el:'H',p:p.clone().add(dd.multiplyScalar(CH)),tag:'H',_carbon:k});
@@ -324,7 +411,7 @@ function buildSubChair(subs, t){
       bonds.push([k,atoms.length-2],[k,atoms.length-1]);
     }
   }
-  return {atoms,bonds,measures:[],info:{}};
+  return {atoms,bonds,measures:[],info:{},angleData:computeAngles(atoms,bonds)};
 }
 
 /* ============================================================
@@ -332,10 +419,19 @@ function buildSubChair(subs, t){
 ============================================================ */
 const COLORS={
   C:0xaeb9c9, H:0xeef3fb, me:0x5aa7ff, meH:0xb9dcff, tb:0x3fd4c0, tbH:0xbef5ee,
+  et:0x46c7d6, etH:0xb6ecf2, ip:0xa48bff, ipH:0xd6c9ff,
+  F:0x7be382, Cl:0x43c96b, Br:0xd9703a, I:0xb06bd9, OH:0xff6b78, OHH:0xeef3fb,
   ax:0x6ea8ff, eq:0x46d6c8, flag:0xff8fa0
 };
-const sphereGeo={C:new THREE.SphereGeometry(.31,28,22), H:new THREE.SphereGeometry(.19,20,16)};
-const vdwGeo={C:new THREE.SphereGeometry(VDW.C,26,20), H:new THREE.SphereGeometry(VDW.H,22,16)};
+// 元素文字标签颜色
+const LBL_COLOR={me:'#8fc2ff',tb:'#7feadd',et:'#86ecf5',ip:'#c9b8ff',
+  F:'#a6f0ad',Cl:'#86eca6',Br:'#ffb284',I:'#d3a8f5',OH:'#ff9aa5'};
+const _spR={C:.31,H:.19,F:.24,Cl:.30,Br:.34,I:.40,O:.25};
+const sphereGeo={},vdwGeo={};
+Object.keys(VDW).forEach(el=>{
+  sphereGeo[el]=new THREE.SphereGeometry(_spR[el]??.28,28,22);
+  vdwGeo[el]=new THREE.SphereGeometry(VDW[el],26,20);
+});
 const bondGeo=new THREE.CylinderGeometry(1,1,1,14);
 
 class Viewer{
@@ -352,8 +448,9 @@ class Viewer{
     this.camera=new THREE.PerspectiveCamera(42,1,0.1,100);
     this.cam0=cam0||{r:7.2,phi:1.18,theta:0.85,tx:0,ty:0,tz:0.1};
     this.cam={...this.cam0};
-    this.opts={vdw:true,vdwScale:.6,rotate:true,labels:false,angleLabel:false,flags:false,aeColor:true};
+    this.opts={vdw:true,vdwScale:.6,rotate:true,labels:true,angleLabel:false,flags:false,aeColor:true,clash:true};
     this.panMode=false;   // 平移模式:开启后单指/左键拖动 = 平移
+    this._cores=[];this._vdw=[];this._sprites=[];
     this._lastInteract=0;
     this.group=new THREE.Group(); this.scene.add(this.group);
     this.lg=new THREE.Group(); this.scene.add(this.lg);
@@ -500,41 +597,58 @@ class Viewer{
       m.scale.set(heavy?.075:.052,dir.length(),heavy?.075:.052);
       this.group.add(m);
     });
-    // 原子
+    // 原子:核心球 + VDW 球始终创建,显隐/配色交给 applyStyle 热更新(切换无卡顿)
+    this._cores=[];this._vdw=[];this._sprites=[];
     mol.atoms.forEach((at,i)=>{
-      let tag=at.tag;
-      if(!this.opts.aeColor&&(tag==='ax'||tag==='eq')) tag='H';
-      const col=COLORS[tag]??COLORS[at.el];
-      const m=new THREE.Mesh(sphereGeo[at.el],new THREE.MeshPhongMaterial({color:col,shininess:55,
-        specular:0x33445c, emissive:tag==='flag'&&this.opts.flags?0x55101b:0x000000}));
-      m.position.copy(at.p); this.group.add(m);
-      if(this.opts.vdw && this.opts.vdwScale>0){
-        const sev=atomSev.get(i)||0;
-        const strong=tag==='flag'||sev>=.45;          // 强空间冲突才染红
-        const isBig=(tag==='me'||tag==='tb');
-        const opScale=Math.min(1,this.opts.vdwScale+.18);   // 缩小时保留可见度
-        const vm=new THREE.Mesh(vdwGeo[at.el],new THREE.MeshPhongMaterial({
-          color:strong?0xff4d66:col, transparent:true,
-          opacity:(strong?.22:(isBig?.16:.10))*opScale,
-          depthWrite:false, shininess:90}));
-        vm.position.copy(at.p);
-        if(this.opts.vdwScale!==1) vm.scale.setScalar(this.opts.vdwScale);
-        this.group.add(vm);
+      const m=new THREE.Mesh(sphereGeo[at.el],new THREE.MeshPhongMaterial({shininess:55,specular:0x33445c}));
+      m.position.copy(at.p); this.group.add(m); this._cores.push(m);
+      const vm=new THREE.Mesh(vdwGeo[at.el],new THREE.MeshPhongMaterial({
+        transparent:true,depthWrite:false,shininess:90}));
+      vm.position.copy(at.p); this.group.add(vm); this._vdw.push(vm);
+      if(at.label){
+        const sp=makeSprite(at.label, LBL_COLOR[at.tag]||'#dce8fa');
+        sp.position.copy(at.p).add(V(0,.58,0)); sp.scale.set(.96,.48,1);
+        this.lg.add(sp); this._sprites.push({sp,kind:'label'});
       }
-      if(this.opts.labels&&at.label){
-        const sp=makeSprite(at.label, tag==='me'?'#8fc2ff':tag==='tb'?'#7feadd':'#cfe0f5');
-        sp.position.copy(at.p).add(V(0,.42,0)); sp.scale.set(.62,.31,1); this.lg.add(sp);
+      if(at.tag==='ax'||at.tag==='eq'){
+        const sp=makeSprite(at.tag==='ax'?'a':'e', at.tag==='ax'?'#8fbcff':'#76e7d6');
+        sp.position.copy(at.p).add(V(0,.46,0)); sp.scale.set(.52,.42,1);
+        this.lg.add(sp); this._sprites.push({sp,kind:'ae'});
       }
-      if(this.opts.aeColor&&(tag==='ax'||tag==='eq')){
-        const sp=makeSprite(tag==='ax'?'a':'e', tag==='ax'?'#8fbcff':'#76e7d6');
-        sp.position.copy(at.p).add(V(0,.30,0)); sp.scale.set(.34,.27,1); this.lg.add(sp);
-      }
-      if(this.opts.flags&&tag==='flag'){
+      if(at.tag==='flag'){
         const sp=makeSprite('旗杆H','#ffb3bd');
-        sp.position.copy(at.p).add(V(0,.34,0)); sp.scale.set(.62,.30,1); this.lg.add(sp);
+        sp.position.copy(at.p).add(V(0,.5,0)); sp.scale.set(.96,.46,1);
+        this.lg.add(sp); this._sprites.push({sp,kind:'flag'});
       }
     });
+    this.applyStyle();
     this.render();   // 立即上屏一帧（后台 rAF 暂停时也保证交互即时可见）
+  }
+  // 仅刷新显示样式(填充/标签/a-e/旗杆/红线),不重建分子 → 即时响应
+  applyStyle(){
+    const mol=this.mol; if(!mol)return;
+    const s=this.opts;
+    const tagOf=at=>{let t=at.tag;return (!s.aeColor&&(t==='ax'||t==='eq'))?'H':t;};
+    this._cores.forEach((m,i)=>{
+      const t=tagOf(mol.atoms[i]);
+      m.material.color.setHex(COLORS[t]??COLORS[mol.atoms[i].el]);
+      m.material.emissive.setHex(t==='flag'&&s.flags?0x55101b:0x000000);
+    });
+    this._vdw.forEach((vm,i)=>{
+      const at=mol.atoms[i],t=tagOf(at);
+      const on=s.vdw&&s.vdwScale>0; vm.visible=on;
+      if(!on)return;
+      const sev=this.atomSev.get(i)||0;
+      const strong=s.clash&&(t==='flag'||sev>=.45);
+      vm.material.color.setHex(strong?0xff4d66:(COLORS[t]??COLORS[at.el]));
+      const opScale=Math.min(1,s.vdwScale+.18);
+      vm.material.opacity=(strong?.22:(at.big?.16:.10))*opScale;
+      vm.scale.setScalar(s.vdwScale===1?1:s.vdwScale);
+    });
+    this._sprites.forEach(o=>{
+      o.sp.visible=o.kind==='label'?s.labels:o.kind==='ae'?s.aeColor:s.flags;
+    });
+    this.render();
   }
   project(p){
     const v=p.clone().project(this.camera);
@@ -556,7 +670,7 @@ class Viewer{
       ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.restore();
     };
     // 冲突接触：强冲突（旗杆氢等）红色醒目，轻微重叠接触淡橙色提示扭转张力
-    this.clashes.forEach(c=>{
+    if(this.opts.clash) this.clashes.forEach(c=>{
       if(c.sev<.05)return;
       const strong=c.sev>=.45;
       const A=this.project(this.mol.atoms[c.i].p),B=this.project(this.mol.atoms[c.j].p);
@@ -595,10 +709,10 @@ class Viewer{
 }
 
 function labelPill(ctx,x,y,text,color){
-  ctx.save();ctx.font='600 11.5px -apple-system,sans-serif';
-  const w=ctx.measureText(text).width+14;
-  ctx.fillStyle='rgba(13,20,32,.82)';ctx.strokeStyle=color;ctx.lineWidth=1;
-  roundRect(ctx,x-w/2,y-10,w,20,6);ctx.fill();ctx.stroke();
+  ctx.save();ctx.font='600 13.5px -apple-system,sans-serif';
+  const w=ctx.measureText(text).width+16;
+  ctx.fillStyle='rgba(13,20,32,.85)';ctx.strokeStyle=color;ctx.lineWidth=1.2;
+  roundRect(ctx,x-w/2,y-11,w,22,7);ctx.fill();ctx.stroke();
   ctx.fillStyle=color;ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(text,x,y+1);ctx.restore();
 }
@@ -609,12 +723,12 @@ const spriteCache=new Map();
 function makeSprite(text,color){
   const key=text+color;
   if(spriteCache.has(key))return spriteCache.get(key).clone();
-  const c=document.createElement('canvas');c.width=256;c.height=128;
+  const c=document.createElement('canvas');c.width=320;c.height=160;
   const x=c.getContext('2d');
-  x.font='600 52px -apple-system,"PingFang SC",sans-serif';x.textAlign='center';x.textBaseline='middle';
-  x.shadowColor='rgba(0,0,0,.8)';x.shadowBlur=8;
-  x.fillStyle=color;x.fillText(text,128,66);
-  const tex=new THREE.CanvasTexture(c);tex.anisotropy=4;
+  x.font='700 66px -apple-system,"PingFang SC",sans-serif';x.textAlign='center';x.textBaseline='middle';
+  x.shadowColor='rgba(0,0,0,.85)';x.shadowBlur=10;
+  x.fillStyle=color;x.fillText(text,160,84);
+  const tex=new THREE.CanvasTexture(c);tex.anisotropy=8;
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
   spriteCache.set(key,sp);return sp.clone();
 }
@@ -764,36 +878,36 @@ function initViewers(){
 ============================================================ */
 function syncVdwBtn(btn,vw){
   const s=vw.opts.vdwScale;
-  const label=s<.05?'关':s<.85?'半':'实';
-  btn.textContent='◯ 填充:'+label;
+  const en=typeof LANG!=='undefined'&&LANG==='en';
+  const label=s<.05?(en?'Off':'关'):s<.85?(en?'Half':'半'):(en?'Full':'实');
+  btn.textContent=(en?'◯ Fill:':'◯ 填充:')+label;
   btn.classList.toggle('on',s>.05);
 }
+// 纯显示类开关:只热更新样式,不重建分子(消除填充/标签切换卡顿)
+const DISPLAY_TOGGLES={label:'labels',angle:'angleLabel',flag:'flags',aecolor:'aeColor',clash:'clash',rot:'rotate'};
 function bindToolbar(id,vw,onChange){
   document.getElementById(id).querySelectorAll('[data-toggle]').forEach(btn=>{
+    const key=btn.dataset.toggle;
+    if(key==='vdw') syncVdwBtn(btn,vw);
+    else if(DISPLAY_TOGGLES[key]) btn.classList.toggle('on',!!vw.opts[DISPLAY_TOGGLES[key]]);
     btn.addEventListener('click',()=>{
-      const key=btn.dataset.toggle;
-      const map={vdw:'vdw',rot:'rotate',label:'labels',angle:'angleLabel',flag:'flags',aecolor:'aeColor'};
-      const optKey=map[key];
-      if(optKey==='vdw'){
+      if(key==='vdw'){
         // 三档循环:关(0) → 半(.6) → 实(1)
         const cur=vw.opts.vdwScale;
         const nxt=cur<.05?.6:cur<.85?1:0;
-        vw.opts.vdwScale=nxt;
-        vw.opts.vdw=nxt>0;
-        syncVdwBtn(btn,vw);
+        vw.opts.vdwScale=nxt; vw.opts.vdw=nxt>0;
+        syncVdwBtn(btn,vw); vw.applyStyle();           // 即时,不重建
       }else if(key==='pan'){
-        // 平移模式:切换后单指/左键拖动模型上下左右移动
         vw.panMode=!vw.panMode;
         btn.classList.toggle('on',vw.panMode);
         btn.textContent=vw.panMode?'✥ 平移中':'✥ 平移';
-      }else{
-        vw.opts[optKey]=!vw.opts[optKey];
-        btn.classList.toggle('on',vw.opts[optKey]);
+      }else if(DISPLAY_TOGGLES[key]){
+        const ok=DISPLAY_TOGGLES[key];
+        vw.opts[ok]=!vw.opts[ok];
+        btn.classList.toggle('on',vw.opts[ok]);
+        vw.applyStyle();                                // 键角/红线/标签即时刷新
       }
-      onChange&&onChange();
     });
-    // 初始同步 vdw 按钮文字
-    if(btn.dataset.toggle==='vdw') syncVdwBtn(btn,vw);
   });
   document.getElementById(id).querySelectorAll('[data-act]').forEach(btn=>{
     btn.addEventListener('click',()=>{
@@ -1007,7 +1121,7 @@ function renderAxeq(){
   });
   const atEnd=axeq.t<.05||axeq.t>.95;
   const nowPos = axeq.t<.5 ? axeq.pos : (axeq.pos==='a'?'e':'a');
-  const A=axeq.sub==='tBu'?21:7.6;
+  const A=AVAL[axeq.sub]||0;
   const startAx=axeq.pos==='a'?1:0, endAx=axeq.pos==='a'?0:1;
   const axialness=lerp(startAx,endAx,smooth(axeq.t));
   const penalty=(axeq.sub==='H'?0:A)*axialness;
@@ -1050,17 +1164,25 @@ function initAxeq(){
 /* ============================================================
    模块六：二取代环己烷
 ============================================================ */
-const disub={pos:'1,2',ct:'trans',t:0,tbu:false};
+const disub={pos:'1,2',ct:'trans',t:0,g1:'Me',g2:'Me'};
+// 可选基团(按 A 值升序)
+const DISUB_GROUPS=['F','Cl','Br','OH','Me','Et','iPr','tBu'];
 function disubSubs(){
   const j=+disub.pos.split(',')[1]-1;
-  const face0='up';
   const face1=disub.ct==='cis'?'up':'down';
-  return [{k:0,kind:'Me',face:face0},{k:j,kind:disub.tbu?'tBu':'Me',face:face1}];
+  return [{k:0,kind:disub.g1,face:'up'},{k:j,kind:disub.g2,face:face1}];
 }
 function slotAt(k,face,flip){
   const f=analyticChair(flip).dirs[k];
   if(face==='up') return f.aUp?'a':'e';
   return f.aUp?'e':'a';
+}
+function disubName(){
+  const cis=disub.ct==='cis';
+  const n2=disub.pos.split(',')[1];
+  const g1=GROUP_CN[disub.g1], g2=GROUP_CN[disub.g2];
+  if(disub.g1===disub.g2) return `${cis?'顺':'反'}-${disub.pos}-${disub.g1==='Me'?'二甲基':'二'+g1}环己烷`;
+  return `${cis?'顺':'反'}-1-${g1}-${n2}-${g2}环己烷`;
 }
 function renderDisub(){
   const subs=disubSubs();
@@ -1069,26 +1191,31 @@ function renderDisub(){
   const flip=disub.t>.5?1:0;
   const types=subs.map(s=>slotAt(s.k,s.face,flip));
   const combo=types.join('');
-  const j=+disub.pos.split(',')[1];
-  const cnName=(disub.ct==='cis'?'顺式-':'反式-')+disub.pos+'-二'+(disub.tbu?'甲基-4-叔丁基':'甲基')+'环己烷';
-  document.getElementById('disub-sname').textContent=disub.tbu?'顺-1-甲基-4-叔丁基环己烷':cnName;
-  document.getElementById('disub-badge').textContent=disub.tbu?'顺-1-甲基-4-叔丁基':'顺/反-'+disub.pos+'二甲基';
-  document.getElementById('disub-combo-badge').innerHTML='当前构象：<b>'+combo+'</b>';
+  const n2=disub.pos.split(',')[1];
+  const title=document.getElementById('g2-title');
+  if(title) title.innerHTML=`C${n2} 取代基 <small>（A 值 kJ/mol）</small>`;
+  document.getElementById('disub-sname').textContent=disubName();
+  document.getElementById('disub-badge').textContent=(disub.ct==='cis'?'顺':'反')+'-'+disub.pos+' '+GROUP_LABEL[disub.g1]+'/'+GROUP_LABEL[disub.g2];
+  document.getElementById('disub-combo-badge').innerHTML='构象：<b>'+combo+'</b>';
   document.getElementById('disub-combo').textContent='当前椅式：'+combo.split('').join('、')+' 键'+(flip?'（翻环后）':'');
   const nAxial=types.filter(x=>x==='a').length;
-  const penalty=subs.reduce((sum,s)=>{const ty=slotAt(s.k,s.face,flip);return sum+(ty==='a'?(s.kind==='tBu'?21:7.6):0);},0);
+  const penalty=subs.reduce((sum,s)=>sum+(slotAt(s.k,s.face,flip)==='a'?AVAL[s.kind]:0),0);
   document.getElementById('disub-na').innerHTML=nAxial+' <small>个</small>';
   document.getElementById('disub-energy').innerHTML=penalty.toFixed(1)+' <small>kJ/mol</small>';
+  document.querySelectorAll('#g1-row [data-g]').forEach(b=>b.classList.toggle('on',b.dataset.g===disub.g1));
+  document.querySelectorAll('#g2-row [data-g]').forEach(b=>b.classList.toggle('on',b.dataset.g===disub.g2));
   let pills;
   if(disub.t<.05||disub.t>.95){
     if(nAxial===0)pills='<span class="strain-pill cool">ee · 双 e 键优势构象</span>';
     else if(nAxial===2)pills='<span class="strain-pill hot">aa · 双 a 键，翻环后得 ee</span>';
     else pills='<span class="strain-pill warm">ea/ae · 总有一个直立基团</span>';
-    if(disub.tbu){
-      const tbuType=slotAt(j-1,'up',flip);
-      pills+=tbuType==='e'
-        ?'<span class="strain-pill cool">叔丁基锁定 e 键</span>'
-        :'<span class="strain-pill hot">叔丁基在 a 键（极少存在）</span>';
+    // 最大基团是否被锁定在 e 键
+    let big=subs[0]; subs.forEach(s=>{if(AVAL[s.kind]>AVAL[big.kind])big=s;});
+    if(AVAL[big.kind]>=9){
+      const ty=slotAt(big.k,big.face,flip);
+      pills+=ty==='e'
+        ?`<span class="strain-pill cool">${GROUP_CN[big.kind]}锁定 e 键</span>`
+        :`<span class="strain-pill hot">${GROUP_CN[big.kind]}在 a 键（极少存在）</span>`;
     }
   }else pills='<span class="strain-pill warm">翻环中：顺反不变，a ⇄ e 互换</span>';
   document.getElementById('disub-strains').innerHTML=pills;
@@ -1097,20 +1224,34 @@ function flipDisub(){
   stopTweens();const start=disub.t,end=disub.t>.5?0:1;
   tweenTo(900,t=>{disub.t=lerp(start,end,t);renderDisub();});
 }
+// 构建两排基团选择 chip(显示基团符号 + A 值)
+function buildGroupRows(){
+  ['g1-row','g2-row'].forEach((rid,row)=>{
+    const wrap=document.getElementById(rid);
+    wrap.innerHTML=DISUB_GROUPS.map(g=>
+      `<button class="chip${(row?disub.g2:disub.g1)===g?' on':''}" data-g="${g}">${GROUP_LABEL[g]}<small> ${AVAL[g]}</small></button>`
+    ).join('');
+    wrap.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click',()=>{
+      if(row===0)disub.g1=b.dataset.g; else disub.g2=b.dataset.g;
+      disub.t=0; renderDisub();
+    }));
+  });
+}
 function initDisub(){
+  buildGroupRows();
   bindToolbar('tb-disub',viewers.disub,act=>{if(act==='flip')flipDisub();});
   document.querySelectorAll('[data-pos12]').forEach(b=>b.addEventListener('click',()=>{
-    disub.pos=b.dataset.pos12;disub.t=0;disub.tbu=false;
+    disub.pos=b.dataset.pos12;disub.t=0;
     document.querySelectorAll('[data-pos12]').forEach(x=>x.classList.toggle('on',x===b));
     renderDisub();
   }));
   document.querySelectorAll('#disub-ct-seg button').forEach(b=>b.addEventListener('click',()=>{
-    disub.ct=b.dataset.ct;disub.t=0;disub.tbu=false;
+    disub.ct=b.dataset.ct;disub.t=0;
     document.querySelectorAll('#disub-ct-seg button').forEach(x=>x.classList.toggle('on',x===b));
     renderDisub();
   }));
   document.getElementById('load-tbu').addEventListener('click',()=>{
-    disub.tbu=true;disub.pos='1,4';disub.ct='cis';disub.t=0;
+    disub.g1='Me';disub.g2='tBu';disub.pos='1,4';disub.ct='cis';disub.t=0;
     document.querySelectorAll('[data-pos12]').forEach(x=>x.classList.toggle('on',x.dataset.pos12==='1,4'));
     document.querySelectorAll('#disub-ct-seg button').forEach(x=>x.classList.toggle('on',x.dataset.ct==='cis'));
     renderDisub();
@@ -1246,6 +1387,89 @@ window.addEventListener('resize', ()=>{
   _mobilRzT=setTimeout(applyMobileLayout, 150);
 });
 applyMobileLayout();
+
+/* ============================================================
+   中英双语切换
+============================================================ */
+const I18N={
+  nav:{intro:['原理','Basics'],ethane:['乙烷','Ethane'],butane:['丁烷','Butane'],
+    rings:['环烷烃','Rings'],chair:['椅/船','Chair/Boat'],axeq:['a/e键','a/e Bonds'],disub:['二取代','Disub.']},
+  navsub:{intro:[' · 核心',' · Core'],ethane:[' · 扭转张力',' · Torsion'],butane:[' · 空间位阻',' · Steric'],
+    rings:[' · 角张力',' · Angle'],chair:[' · 翻环能垒',' · Ring Flip'],axeq:[' · 取代基',' · Substituent'],disub:[' · 顺反',' · cis/trans']},
+  brand:'烷烃与环烷烃 · 空间结构互动课|Alkanes & Cycloalkanes · Interactive',
+  toggle:{vdw:['◯ 填充:关','◯ Fill:Off'],pan:['✥ 平移','✥ Pan'],panOn:['✥ 平移中','✥ Panning'],
+    angle:['∠ 键角','∠ Angles'],clash:['⚠ 冲突线','⚠ Clash Lines'],label:['🏷 标注','🏷 Labels'],
+    rot:['⟳ 视角自转','⟳ Auto-Rotate'],flag:['⚑ 高亮旗杆氢','⚑ Flag H'],aecolor:['🎨 a/e 着色','🎨 a/e Color'],
+    reset:['复位视角','Reset View'],flip:['🔄 翻环','🔄 Flip'],
+    understand:['我已理解本节','I Understand This']},
+  // 标题/标签短语:完整匹配(中文原文 → 英文)
+  phrases:{
+    '控制台':'Console','原理讲解':'Key Concepts','能量观点：优势构象如何决定？':'Energy: What Makes a Favored Conformation?',
+    '规律总结（对应课件 P37–P38）':'Summary (Slides P37–P38)','NEWMAN 投影式（沿 C–C 键看）':'NEWMAN PROJECTION (along C–C)',
+    'NEWMAN 投影式（沿 C2–C3 键看）':'NEWMAN PROJECTION (along C2–C3)','能量曲线（点击曲线可跳转）':'Energy Curve (click to seek)',
+    '扭转角':'Torsion','二面角':'Dihedral','当前状态':'Current State','构象名称':'Conformation','扭转张力能':'Torsional E',
+    '取代位置':'Position','顺 / 反':'cis / trans','快捷示例':'Quick Example','直立基团数':'Axial groups','位阻惩罚':'Strain penalty',
+    'C1 取代基 ':'C1 group ','平均键角':'Avg angle','最小键角':'Min angle','环大小':'Ring size','稳定性':'Stability',
+    '键角偏离 109.5°':'Deviation from 109.5°','二面角 φ':'Dihedral φ','甲基距离':'Me–Me dist','能量':'Energy','最近 H···H':'Nearest H···H'
+  }
+};
+function t(pair){ return LANG==='en'?pair[1]:pair[0]; }
+function applyLang(){
+  const en=LANG==='en';
+  // 导航
+  document.querySelectorAll('.nav-item[data-page]').forEach(b=>{
+    const p=b.dataset.page; if(!I18N.nav[p])return;
+    const sub=b.querySelector('.sub-t');
+    b.childNodes.forEach(n=>{ if(n.nodeType===3 && n.textContent.trim() && !n._cn) n._cn=n.textContent; });
+    const textNode=Array.from(b.childNodes).find(n=>n.nodeType===3 && n.textContent.trim());
+    if(textNode) textNode.textContent=en?I18N.nav[p][1]:(textNode._cn||I18N.nav[p][0]);
+    if(sub){ if(!sub._cn)sub._cn=sub.textContent; sub.textContent=en?I18N.navsub[p][1]:sub._cn; sub.style.display=''; }
+  });
+  // brand 副标题
+  const bp=document.querySelector('.brand p');
+  if(bp){ if(!bp._cn)bp._cn=bp.textContent; bp.textContent=en?I18N.brand.split('|')[1]:bp._cn; }
+  // 工具栏按钮(按 data-toggle / data-act)
+  const setBtn=(btn,cn,enTxt)=>{ if(!btn._cn)btn._cn=btn.textContent; btn.textContent=en?enTxt:btn._cn; };
+  const TB2VW={'tb-ethane':'ethane','tb-butane':'butane','tb-rings':'rings','tb-chair':'chair','tb-axeq':'axeq','tb-disub':'disub'};
+  document.querySelectorAll('[data-toggle]').forEach(b=>{
+    const k=b.dataset.toggle;
+    if(k==='vdw'){
+      const tb=b.closest('.toolbar');
+      const vw=tb&&viewers[TB2VW[tb.id]];
+      if(vw) syncVdwBtn(b,vw);
+      return;
+    }
+    if(k==='pan'){ setBtn(b,I18N.toggle.pan[0], b.classList.contains('on')?I18N.toggle.panOn[1]:I18N.toggle.pan[1]); return; }
+    if(I18N.toggle[k]) setBtn(b,I18N.toggle[k][0],I18N.toggle[k][1]);
+  });
+  document.querySelectorAll('[data-act="resetView"]').forEach(b=>setBtn(b,I18N.toggle.reset[0],I18N.toggle.reset[1]));
+  document.querySelectorAll('[data-act="flip"]').forEach(b=>setBtn(b,I18N.toggle.flip[0],I18N.toggle.flip[1]));
+  document.querySelectorAll('.ubtn').forEach(b=>setBtn(b,I18N.toggle.understand[0],I18N.toggle.understand[1]));
+  // 短语扫描(card-h / h4 / 表头 / stat 标签)
+  document.querySelectorAll('.card-h, .ctl-block h4, .stat .k, table th, .state-en, .k, .range-row span').forEach(el=>{
+    const raw=el.textContent.trim();
+    if(I18N.phrases[raw]!==undefined){
+      if(!el._cn)el._cn=raw;
+      // card-h 含 dot span,保留元素子节点,只替换文字
+      const dot=el.querySelector('.dot');
+      el.textContent=en?I18N.phrases[raw]:el._cn;
+      if(dot)el.insertBefore(dot,el.firstChild);
+    }
+  });
+  const lb=document.getElementById('lang-btn'); if(lb)lb.textContent=en?'EN':'中';
+}
+(function initLang(){
+  LANG=localStorage.getItem('conformation-lab-lang')||'cn';
+  const lb=document.getElementById('lang-btn');
+  if(lb)lb.addEventListener('click',()=>{
+    LANG=LANG==='en'?'cn':'en';
+    localStorage.setItem('conformation-lab-lang',LANG);
+    // 重建动态内容后再套用界面语言
+    try{renderEthane();renderButane();renderRings();renderChair();renderAxeq();renderDisub();}catch(e){}
+    applyLang();
+  });
+  if(LANG==='en')applyLang();   // 记住英文偏好:首屏即英文
+})();
 
 /* ============================================================
    日间/夜间模式切换

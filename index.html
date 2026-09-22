@@ -71,31 +71,31 @@ nav.rail{
 .rail-foot .pct{text-align:right;color:var(--mut)}
 
 main{flex:1;overflow-y:auto;scroll-behavior:smooth}
-.wrap{max-width:1240px;margin:0 auto;padding:26px 34px 60px}
+.wrap{max-width:1280px;margin:0 auto;padding:18px 26px 60px}
 
 section.page{display:none;animation:fade .3s ease}
 section.page.show{display:block}
 @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-.page-head{margin-bottom:18px}
+.page-head{margin-bottom:12px}
 .page-head h2{font-size:23px;font-weight:700;letter-spacing:.5px}
 .page-head .sub{color:var(--mut);font-size:13.5px;margin-top:5px}
 .tagline{display:inline-block;font-size:11.5px;color:var(--acc);background:rgba(79,156,255,.1);border:1px solid rgba(79,156,255,.28);
   padding:2px 10px;border-radius:20px;margin-bottom:9px}
 
 /* ---------- cards / grid ---------- */
-.grid{display:grid;gap:16px}
+.grid{display:grid;gap:12px}
 .g-2{grid-template-columns:1fr 360px}
 .g-2b{grid-template-columns:1fr 1fr}
 .g-3{grid-template-columns:repeat(3,1fr)}
 .card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:var(--radius);
   box-shadow:var(--shadow)}
-.card-h{padding:13px 17px;border-bottom:1px solid var(--line);font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px}
+.card-h{padding:10px 14px;border-bottom:1px solid var(--line);font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:9px}
 .card-h .dot{width:7px;height:7px;border-radius:50%;background:var(--acc)}
-.card-b{padding:16px 17px}
+.card-b{padding:12px 14px}
 
 /* ---------- viewer ---------- */
-.viewer-wrap{position:relative;height:430px;border-radius:0;background:
+.viewer-wrap{position:relative;height:400px;border-radius:0;background:
   linear-gradient(180deg,var(--vw-bg),var(--vw-bg));overflow:hidden}
 .viewer-wrap canvas{position:absolute;inset:0;width:100%;height:100%}
 .viewer-wrap .mol-canvas{cursor:grab;z-index:1}
@@ -126,9 +126,14 @@ body.light .tbtn.on{color:var(--acc);background:rgba(43,108,176,.12)}
 .chart-canvas{width:100%;height:215px}
 
 /* ---------- controls / side panel ---------- */
-.ctl-block{margin-bottom:17px}
+.ctl-block{margin-bottom:13px}
 .ctl-block:last-child{margin-bottom:0}
-.ctl-block h4{font-size:12.5px;color:var(--acc2);letter-spacing:1px;margin-bottom:9px;font-weight:600}
+.ctl-block h4{font-size:12.5px;color:var(--acc2);letter-spacing:.5px;margin-bottom:7px;font-weight:600}
+.ctl-block h4 small{color:var(--mut2);font-weight:400;letter-spacing:0}
+/* 基团选择 chip 上的 A 值小字 */
+.group-row .chip{padding:5px 10px;font-size:12px}
+.group-row .chip small{color:var(--mut2);font-size:10.5px;font-weight:400}
+.group-row .chip.on small{color:var(--acc)}
 input[type=range]{width:100%;accent-color:var(--acc);height:4px}
 .range-row{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut2);margin-top:3px}
 .chip-row{display:flex;flex-wrap:wrap;gap:7px}
@@ -293,7 +298,10 @@ tr:hover td{background:rgba(79,156,255,.04)}
     <div class="brand">
       <div class="brand-row">
         <h1>🧪 构象实验室</h1>
-        <button class="theme-btn" id="theme-btn" title="切换日间/夜间模式">🌙</button>
+        <div style="display:flex;gap:6px;flex:none">
+          <button class="theme-btn" id="lang-btn" title="中 / EN">中</button>
+          <button class="theme-btn" id="theme-btn" title="切换日间/夜间模式">🌙</button>
+        </div>
       </div>
       <p>烷烃与环烷烃 · 空间结构互动课</p>
     </div>
@@ -316,7 +324,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <!-- ============ 00 核心原理 ============ -->
       <section class="page" id="page-intro">
         <div class="page-head">
-          <span class="tagline">START HERE · 先建立分析构象的三把尺子</span>
+          <span class="tagline">BASICS · 三把尺子</span>
           <h2>核心原理：分子为什么长成这个形状？</h2>
           <div class="sub">单键可以自由旋转，由此产生的不同空间排布叫<b style="color:var(--txt)">构象</b>。分子总是倾向于停在能量最低的构象（优势构象）。判断构象是否稳定，看三种张力。</div>
         </div>
@@ -386,7 +394,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <!-- ============ 01 乙烷 ============ -->
       <section class="page" id="page-ethane">
         <div class="page-head">
-          <span class="tagline">ETHANE · 扭转张力的起源</span>
+          <span class="tagline">ETHANE · 扭转张力</span>
           <h2>乙烷的构象：绕 C–C 键旋转</h2>
           <div class="sub">拖动滑块让后面的 CH₃ 绕 C–C 键旋转，观察氢原子距离、Newman 投影式与能量曲线如何同步变化。</div>
         </div>
@@ -401,7 +409,9 @@ tr:hover td{background:rgba(79,156,255,.04)}
               <button class="tbtn on" data-toggle="vdw">◯ 空间填充</button>
               <button class="tbtn on" data-toggle="rot">⟳ 视角自转</button>
               <button class="tbtn" data-toggle="pan">✥ 平移</button>
-              <button class="tbtn" data-toggle="label">🏷 原子标注</button>
+              <button class="tbtn" data-toggle="angle">∠ 键角</button>
+              <button class="tbtn on" data-toggle="clash">⚠ 冲突线</button>
+              <button class="tbtn on" data-toggle="label">🏷 原子标注</button>
               <button class="tbtn" data-act="resetView">复位视角</button>
             </div>
             <div class="subviews">
@@ -410,7 +420,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
             </div>
           </div>
           <div>
-            <div class="card" style="margin-bottom:16px">
+            <div class="card" style="margin-bottom:12px">
               <div class="card-h"><span class="dot"></span>控制台</div>
               <div class="card-b">
                 <div class="ctl-block">
@@ -458,7 +468,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <!-- ============ 02 丁烷 ============ -->
       <section class="page" id="page-butane">
         <div class="page-head">
-          <span class="tagline">BUTANE · 空间位阻的直观体现</span>
+          <span class="tagline">BUTANE · 空间位阻</span>
           <h2>丁烷的构象：两个甲基的"避嫌"</h2>
           <div class="sub">绕 C2–C3 键旋转，两个体积较大的甲基（蓝色）之间的距离决定了构象能量。</div>
         </div>
@@ -473,7 +483,9 @@ tr:hover td{background:rgba(79,156,255,.04)}
               <button class="tbtn on" data-toggle="vdw">◯ 空间填充</button>
               <button class="tbtn on" data-toggle="rot">⟳ 视角自转</button>
               <button class="tbtn" data-toggle="pan">✥ 平移</button>
-              <button class="tbtn" data-toggle="label">🏷 基团标注</button>
+              <button class="tbtn" data-toggle="angle">∠ 键角</button>
+              <button class="tbtn on" data-toggle="clash">⚠ 冲突线</button>
+              <button class="tbtn on" data-toggle="label">🏷 基团标注</button>
               <button class="tbtn" data-act="resetView">复位视角</button>
             </div>
             <div class="subviews">
@@ -482,7 +494,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
             </div>
           </div>
           <div>
-            <div class="card" style="margin-bottom:16px">
+            <div class="card" style="margin-bottom:12px">
               <div class="card-h"><span class="dot"></span>控制台</div>
               <div class="card-b">
                 <div class="ctl-block">
@@ -532,7 +544,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <!-- ============ 03 环烷烃 ============ -->
       <section class="page" id="page-rings">
         <div class="page-head">
-          <span class="tagline">CYCLOALKANES · 角张力与环的折叠</span>
+          <span class="tagline">CYCLOALKANES · 角张力</span>
           <h2>环烷烃的稳定性：小环为何紧张？</h2>
           <div class="sub">切换不同环，观察实际 C–C–C 键角与理想 109.5° 的偏离程度。稳定性：环己烷 &gt; 环戊烷 &gt; 环丁烷 &gt; 环丙烷。</div>
         </div>
@@ -547,12 +559,14 @@ tr:hover td{background:rgba(79,156,255,.04)}
               <button class="tbtn" data-toggle="vdw">◯ 空间填充</button>
               <button class="tbtn on" data-toggle="rot">⟳ 视角自转</button>
               <button class="tbtn" data-toggle="pan">✥ 平移</button>
+              <button class="tbtn" data-toggle="angle">∠ 键角</button>
+              <button class="tbtn on" data-toggle="clash">⚠ 冲突线</button>
               <button class="tbtn on" data-toggle="angle">∠ 键角标注</button>
               <button class="tbtn" data-act="resetView">复位视角</button>
             </div>
           </div>
           <div>
-            <div class="card" style="margin-bottom:16px">
+            <div class="card" style="margin-bottom:12px">
               <div class="card-h"><span class="dot"></span>选择环</div>
               <div class="card-b">
                 <div class="chip-row" style="margin-bottom:14px">
@@ -589,7 +603,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <!-- ============ 04 椅式 vs 船式 ============ -->
       <section class="page" id="page-chair">
         <div class="page-head">
-          <span class="tagline">CHAIR vs BOAT · 课件 P31–P34</span>
+          <span class="tagline">CHAIR / BOAT · P31–34</span>
           <h2>环己烷：椅式构象与船式构象</h2>
           <div class="sub">拖动滑块沿真实的翻环路径变形：椅式 → 半椅式 → 扭船式 → 船式。重点观察船式"旗杆氢"的空间冲突。</div>
         </div>
@@ -604,6 +618,8 @@ tr:hover td{background:rgba(79,156,255,.04)}
               <button class="tbtn on" data-toggle="vdw">◯ 空间填充</button>
               <button class="tbtn on" data-toggle="rot">⟳ 视角自转</button>
               <button class="tbtn" data-toggle="pan">✥ 平移</button>
+              <button class="tbtn" data-toggle="angle">∠ 键角</button>
+              <button class="tbtn on" data-toggle="clash">⚠ 冲突线</button>
               <button class="tbtn" data-toggle="flag">⚑ 高亮旗杆氢</button>
               <button class="tbtn" data-act="resetView">复位视角</button>
             </div>
@@ -613,7 +629,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
             </div>
           </div>
           <div>
-            <div class="card" style="margin-bottom:16px">
+            <div class="card" style="margin-bottom:12px">
               <div class="card-h"><span class="dot"></span>控制台</div>
               <div class="card-b">
                 <div class="ctl-block">
@@ -663,7 +679,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <!-- ============ 05 a/e 键 ============ -->
       <section class="page" id="page-axeq">
         <div class="page-head">
-          <span class="tagline">AXIAL / EQUATORIAL · 课件 P35–P36</span>
+          <span class="tagline">AXIAL / EQUATORIAL · P35–36</span>
           <h2>a 键、e 键与翻环：取代基的"选座"</h2>
           <div class="sub">观察 6 根直立键（a 键）与 6 根平伏键（e 键，各 3 上 3 下），再放入甲基/叔丁基，体会 1,3-二直立相互作用。</div>
         </div>
@@ -678,13 +694,15 @@ tr:hover td{background:rgba(79,156,255,.04)}
               <button class="tbtn on" data-toggle="vdw">◯ 空间填充</button>
               <button class="tbtn on" data-toggle="rot">⟳ 视角自转</button>
               <button class="tbtn" data-toggle="pan">✥ 平移</button>
+              <button class="tbtn" data-toggle="angle">∠ 键角</button>
+              <button class="tbtn on" data-toggle="clash">⚠ 冲突线</button>
               <button class="tbtn on" data-toggle="aecolor">🎨 a/e 着色</button>
               <button class="tbtn" data-act="flip">🔄 翻环动画</button>
               <button class="tbtn" data-act="resetView">复位视角</button>
             </div>
           </div>
           <div>
-            <div class="card" style="margin-bottom:16px">
+            <div class="card" style="margin-bottom:12px">
               <div class="card-h"><span class="dot"></span>控制台</div>
               <div class="card-b">
                 <div class="ctl-block">
@@ -730,7 +748,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <!-- ============ 06 二取代 ============ -->
       <section class="page" id="page-disub">
         <div class="page-head">
-          <span class="tagline">DISUBSTITUTED · 课件 P37–P38</span>
+          <span class="tagline">DISUBSTITUTED · P37–38</span>
           <h2>二取代环己烷：顺反异构与优势构象</h2>
           <div class="sub">选择两个甲基的相对位置与顺反关系，观察 ee / aa / ea 组合如何决定稳定性；翻环查看两种椅式构象的平衡。</div>
         </div>
@@ -745,12 +763,14 @@ tr:hover td{background:rgba(79,156,255,.04)}
               <button class="tbtn on" data-toggle="vdw">◯ 空间填充</button>
               <button class="tbtn on" data-toggle="rot">⟳ 视角自转</button>
               <button class="tbtn" data-toggle="pan">✥ 平移</button>
+              <button class="tbtn" data-toggle="angle">∠ 键角</button>
+              <button class="tbtn on" data-toggle="clash">⚠ 冲突线</button>
               <button class="tbtn" data-act="flip">🔄 翻环</button>
               <button class="tbtn" data-act="resetView">复位视角</button>
             </div>
           </div>
           <div>
-            <div class="card" style="margin-bottom:16px">
+            <div class="card" style="margin-bottom:12px">
               <div class="card-h"><span class="dot"></span>控制台</div>
               <div class="card-b">
                 <div class="ctl-block">
@@ -765,16 +785,20 @@ tr:hover td{background:rgba(79,156,255,.04)}
                     <button data-ct="cis">顺式 cis（同侧）</button>
                     <button class="on" data-ct="trans">反式 trans（异侧）</button>
                   </div>
-                  <h4>示例：大基团定座</h4>
+                  <h4>C1 取代基 <small>（A 值 kJ/mol）</small></h4>
+                  <div class="chip-row group-row" id="g1-row" style="margin-bottom:10px"></div>
+                  <h4 id="g2-title">C2 取代基 <small>（A 值 kJ/mol）</small></h4>
+                  <div class="chip-row group-row" id="g2-row" style="margin-bottom:10px"></div>
+                  <h4>快捷示例</h4>
                   <div class="chip-row">
-                    <button class="chip" id="load-tbu">载入 顺-1-甲基-4-叔丁基环己烷</button>
+                    <button class="chip" id="load-tbu">顺-1-甲基-4-叔丁基</button>
                   </div>
                 </div>
                 <div class="state-card">
                   <div class="state-name" id="disub-sname">反式-1,2-二甲基环己烷</div>
                   <div class="state-en" id="disub-combo">当前椅式：ee（双 e 键）</div>
                   <div class="state-grid">
-                    <div class="stat"><div class="k">直立甲基数</div><div class="v" id="disub-na">0 <small>个</small></div></div>
+                    <div class="stat"><div class="k">直立基团数</div><div class="v" id="disub-na">0 <small>个</small></div></div>
                     <div class="stat"><div class="k">位阻惩罚</div><div class="v" id="disub-energy">0 <small>kJ/mol</small></div></div>
                   </div>
                   <div class="strains" id="disub-strains">

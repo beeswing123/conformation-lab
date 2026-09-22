@@ -376,12 +376,22 @@ class Viewer{
   }
   _bind(){
     let drag=false,lx=0,ly=0,pinch=0;
+    // 用户拖拽视角时,关闭"视角自转"按钮(让用户感知自己接管了)
+    const takeOver=()=>{
+      if(this.opts.rotate){
+        this.opts.rotate=false;
+        const card=this.canvas.closest('.card');
+        const rotBtn=card?.querySelector('[data-toggle="rot"]');
+        if(rotBtn) rotBtn.classList.remove('on');
+      }
+    };
     const down=e=>{drag=true;lx=e.clientX;ly=e.clientY;this._lastInteract=performance.now();};
     this.canvas.addEventListener('pointerdown',e=>{this.canvas.setPointerCapture(e.pointerId);down(e);});
     this.canvas.addEventListener('pointermove',e=>{
       if(!drag)return;
       const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;
       if(e.pointerType==='touch'&&this._d2)return;
+      if(dx||dy) takeOver();
       this.cam.theta-=dx*.006; this.cam.phi=clamp(this.cam.phi-dy*.006,.15,Math.PI-.15);
       this._lastInteract=performance.now();
     });
@@ -1175,6 +1185,10 @@ function applyMobileLayout(){
     }else{
       if(subviews.parentElement !== viewerCard) viewerCard.appendChild(subviews);
     }
+  });
+  // 移动端操作提示:让用户知道可以单指拖拽旋转模型
+  document.querySelectorAll('.hint3d').forEach(h=>{
+    h.textContent = isMobile ? '单指拖拽旋转模型 · 双指缩放' : '鼠标拖动旋转视角 · 滚轮缩放';
   });
   // 切换布局后 viewer 尺寸可能变化,触发重测
   Object.values(viewers).forEach(v=>v._resize && v._resize());

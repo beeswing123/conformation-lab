@@ -196,6 +196,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .brand h1{font-size:13.5px;white-space:nowrap}
   .brand p{display:none}
   .nav-item{padding:6px 9px;margin-bottom:0;flex:none;white-space:nowrap;font-size:12.5px}
+  .nav-item .sub-t{display:none}
   .nav-item .num{width:auto;margin-right:3px;font-size:10px}
   .rail-foot{margin:0 0 0 auto;padding:0 4px;flex:none;min-width:96px}
   .progress-wrap{margin-bottom:2px;height:4px}
@@ -205,8 +206,8 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .page-head{margin-bottom:12px}
   .page-head h2{font-size:18px}
   .page-head .sub{font-size:12.5px}
-  /* viewer 占视口高度,但不超过 360px */
-  .viewer-wrap{height:min(42vh,320px)}
+  /* viewer 占视口高度一半,但不超过 380px */
+  .viewer-wrap{height:min(50vh,380px)}
   .newman-canvas, .chart-canvas{height:170px}
   /* subviews 移出 viewer card 后独立成卡片 */
   .subviews{background:linear-gradient(180deg,var(--panel),#121a28);border:1px solid var(--line);
@@ -254,7 +255,7 @@ tr:hover td{background:rgba(79,156,255,.04)}
 }
 @media(max-width:480px){
   .wrap{padding:10px 9px 70px}
-  .viewer-wrap{height:min(40vh,260px)}
+  .viewer-wrap{height:min(45vh,300px)}
   .page-head h2{font-size:16.5px}
   .tbtn, .chip{font-size:11.5px;padding:7px 10px}
   .brand h1{font-size:12.5px}
@@ -270,13 +271,13 @@ tr:hover td{background:rgba(79,156,255,.04)}
       <h1>🧪 构象实验室</h1>
       <p>烷烃与环烷烃 · 空间结构互动课</p>
     </div>
-    <button class="nav-item" data-page="intro"><span class="num">00</span>核心原理<span class="tick">✓</span></button>
-    <button class="nav-item" data-page="ethane"><span class="num">01</span>乙烷 · 扭转张力<span class="tick">✓</span></button>
-    <button class="nav-item" data-page="butane"><span class="num">02</span>丁烷 · 空间位阻<span class="tick">✓</span></button>
-    <button class="nav-item" data-page="rings"><span class="num">03</span>环烷烃 · 角张力<span class="tick">✓</span></button>
-    <button class="nav-item" data-page="chair"><span class="num">04</span>椅式 vs 船式<span class="tick">✓</span></button>
-    <button class="nav-item" data-page="axeq"><span class="num">05</span>a键 e键 · 翻环<span class="tick">✓</span></button>
-    <button class="nav-item" data-page="disub"><span class="num">06</span>二取代环己烷<span class="tick">✓</span></button>
+    <button class="nav-item" data-page="intro"><span class="num">00</span>原理<span class="sub-t"> · 核心</span><span class="tick">✓</span></button>
+    <button class="nav-item" data-page="ethane"><span class="num">01</span>乙烷<span class="sub-t"> · 扭转张力</span><span class="tick">✓</span></button>
+    <button class="nav-item" data-page="butane"><span class="num">02</span>丁烷<span class="sub-t"> · 空间位阻</span><span class="tick">✓</span></button>
+    <button class="nav-item" data-page="rings"><span class="num">03</span>环烷烃<span class="sub-t"> · 角张力</span><span class="tick">✓</span></button>
+    <button class="nav-item" data-page="chair"><span class="num">04</span>椅/船<span class="sub-t"> · 翻环能垒</span><span class="tick">✓</span></button>
+    <button class="nav-item" data-page="axeq"><span class="num">05</span>a/e键<span class="sub-t"> · 取代基</span><span class="tick">✓</span></button>
+    <button class="nav-item" data-page="disub"><span class="num">06</span>二取代<span class="sub-t"> · 顺反</span><span class="tick">✓</span></button>
     <div class="rail-foot">
       <div class="progress-wrap"><div class="progress-bar" id="progBar"></div></div>
       <div class="pct"><span id="progPct">0</span>% 已理解 · 自动保存</div>

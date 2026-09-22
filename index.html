@@ -205,9 +205,12 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .page-head{margin-bottom:12px}
   .page-head h2{font-size:18px}
   .page-head .sub{font-size:12.5px}
-  /* viewer 占视口高度,但不超过 380px */
-  .viewer-wrap{height:min(45vh,360px)}
+  /* viewer 占视口高度,但不超过 360px */
+  .viewer-wrap{height:min(42vh,320px)}
   .newman-canvas, .chart-canvas{height:170px}
+  /* subviews 移出 viewer card 后独立成卡片 */
+  .subviews{background:linear-gradient(180deg,var(--panel),#121a28);border:1px solid var(--line);
+    border-radius:var(--radius);box-shadow:var(--shadow);margin-top:12px;overflow:hidden}
   /* 工具栏横向滚动,按钮不挤压 */
   .toolbar{gap:6px;padding:8px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
   .toolbar::-webkit-scrollbar{display:none}
@@ -242,15 +245,21 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .subviews > div{padding:9px 11px}
   .hint3d{font-size:11px}
   .vbadge span{font-size:11px;padding:3px 9px}
+  /* 主操作按钮(翻环/连续旋转)移动端醒目 */
+  button[id$="-play"], button[data-act="flip"]{
+    background:linear-gradient(90deg,var(--acc),#3a8eed)!important;
+    color:#fff!important;border-color:var(--acc)!important;font-weight:600;
+    box-shadow:0 2px 8px rgba(79,156,255,.35)
+  }
 }
 @media(max-width:480px){
   .wrap{padding:10px 9px 70px}
-  .viewer-wrap{height:min(42vh,300px)}
+  .viewer-wrap{height:min(40vh,260px)}
   .page-head h2{font-size:16.5px}
   .tbtn, .chip{font-size:11.5px;padding:7px 10px}
   .brand h1{font-size:12.5px}
   .nav-item{padding:5px 8px;font-size:12px}
-  .newman-canvas, .chart-canvas{height:155px}
+  .newman-canvas, .chart-canvas{height:150px}
 }
 </style>
 </head>

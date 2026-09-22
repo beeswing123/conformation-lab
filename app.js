@@ -1159,6 +1159,33 @@ renderEthane();renderButane();renderRings();renderChair();renderAxeq();renderDis
 updateProgress();
 showPage(PAGES.includes(store.lastPage)?store.lastPage:'intro');
 
+/* ============================================================
+   移动端布局重排:把 Newman/能量图 subviews 移到 grid 末尾,
+   让 viewer → 工具栏 → 控制台(滑块+chip) 紧凑可见,提升互动性
+============================================================ */
+function applyMobileLayout(){
+  const isMobile = window.innerWidth <= 768;
+  document.querySelectorAll('.g-2').forEach(grid=>{
+    const viewerCard = grid.children[0];
+    if(!viewerCard) return;
+    const subviews = viewerCard.querySelector(':scope > .subviews');
+    if(!subviews) return;
+    if(isMobile){
+      if(subviews.parentElement === viewerCard) grid.appendChild(subviews);
+    }else{
+      if(subviews.parentElement !== viewerCard) viewerCard.appendChild(subviews);
+    }
+  });
+  // 切换布局后 viewer 尺寸可能变化,触发重测
+  Object.values(viewers).forEach(v=>v._resize && v._resize());
+}
+let _mobilRzT;
+window.addEventListener('resize', ()=>{
+  clearTimeout(_mobilRzT);
+  _mobilRzT=setTimeout(applyMobileLayout, 150);
+});
+applyMobileLayout();
+
 let lastTick=0;
 function anyPlayActive(){return ['eth','but','chair'].some(k=>plays[k]);}
 function loop(now){

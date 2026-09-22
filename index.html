@@ -174,6 +174,53 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .subviews{grid-template-columns:1fr}
   .subviews > div + div{border-left:none;border-top:1px solid var(--line)}
 }
+
+/* 触控优化:避免拖拽 3D 视角时触发页面滚动 */
+.viewer-wrap, .mol-canvas, .ov-canvas{touch-action:none}
+.tbtn, .chip, .nav-item, .ubtn{touch-action:manipulation}
+
+/* ---------- 移动端响应式 (≤768px) ---------- */
+@media(max-width:768px){
+  html,body{overflow:auto;height:auto}
+  .app{flex-direction:column;height:auto;min-height:100vh}
+  nav.rail{
+    width:auto;flex-direction:row;align-items:center;gap:6px;padding:8px 10px;
+    overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:0;z-index:30;
+    border-right:none;border-bottom:1px solid var(--line)
+  }
+  .brand{padding:0 8px 0 0;border-bottom:none;margin-bottom:0;flex:none;border-right:1px solid var(--line);padding-right:10px}
+  .brand h1{font-size:14px;white-space:nowrap}
+  .brand p{display:none}
+  .nav-item{padding:7px 11px;margin-bottom:0;flex:none;white-space:nowrap}
+  .nav-item .num{width:auto;margin-right:4px}
+  .rail-foot{margin:0 0 0 auto;padding:0;flex:none;min-width:120px}
+  .progress-wrap{margin-bottom:3px}
+  .rail-foot .pct{font-size:10px;text-align:right}
+  main{overflow:visible;height:auto}
+  .wrap{padding:14px 12px 80px}
+  .page-head h2{font-size:18px}
+  .page-head .sub{font-size:12.5px}
+  .viewer-wrap{height:300px}
+  .newman-canvas, .chart-canvas{height:180px}
+  .toolbar{gap:6px;padding:8px}
+  .tbtn{font-size:12px;padding:7px 11px}
+  .chip{font-size:12px;padding:7px 11px}
+  .state-name{font-size:14px}
+  .principle-grid{grid-template-columns:1fr}
+  .data-strip{flex-direction:column}
+  .data-strip div + div{border-left:none;border-top:1px solid var(--line)}
+  .data-strip .n{font-size:16px}
+  .grid{gap:12px}
+  .card-b{padding:12px 13px}
+  .ubtn{padding:11px 22px;font-size:14px}
+}
+@media(max-width:480px){
+  .wrap{padding:10px 9px 70px}
+  .viewer-wrap{height:260px}
+  .page-head h2{font-size:16px}
+  .tbtn, .chip{font-size:11.5px;padding:7px 10px}
+  .brand h1{font-size:13px}
+}
 </style>
 </head>
 <body>

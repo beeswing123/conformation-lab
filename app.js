@@ -350,7 +350,8 @@ class Viewer{
     this.camera=new THREE.PerspectiveCamera(42,1,0.1,100);
     this.cam0=cam0||{r:7.2,phi:1.18,theta:0.85,tx:0,ty:0,tz:0.1};
     this.cam={...this.cam0};
-    this.opts={vdw:true,rotate:true,labels:false,angleLabel:false,flags:false,aeColor:true};
+    this.opts={vdw:true,vdwScale:.6,rotate:true,labels:false,angleLabel:false,flags:false,aeColor:true};
+    this._lastInteract=0;
     this.group=new THREE.Group(); this.scene.add(this.group);
     this.lg=new THREE.Group(); this.scene.add(this.lg);
     const amb=new THREE.HemisphereLight(0xbfd8ff,0x141c2c,1.05); this.scene.add(amb);
@@ -375,24 +376,25 @@ class Viewer{
   }
   _bind(){
     let drag=false,lx=0,ly=0,pinch=0;
-    const down=e=>{drag=true;lx=e.clientX;ly=e.clientY;};
+    const down=e=>{drag=true;lx=e.clientX;ly=e.clientY;this._lastInteract=performance.now();};
     this.canvas.addEventListener('pointerdown',e=>{this.canvas.setPointerCapture(e.pointerId);down(e);});
     this.canvas.addEventListener('pointermove',e=>{
       if(!drag)return;
       const dx=e.clientX-lx,dy=e.clientY-ly;lx=e.clientX;ly=e.clientY;
       if(e.pointerType==='touch'&&this._d2)return;
       this.cam.theta-=dx*.006; this.cam.phi=clamp(this.cam.phi-dy*.006,.15,Math.PI-.15);
+      this._lastInteract=performance.now();
     });
-    const up=()=>drag=false;
+    const up=()=>{if(drag){this._lastInteract=performance.now();}drag=false;};
     window.addEventListener('pointerup',up);
     this.canvas.addEventListener('wheel',e=>{e.preventDefault();
-      this.cam.r=clamp(this.cam.r*(1+e.deltaY*.0011),3.2,20);},{passive:false});
+      this.cam.r=clamp(this.cam.r*(1+e.deltaY*.0011),3.2,20);this._lastInteract=performance.now();},{passive:false});
     this.canvas.addEventListener('touchstart',e=>{
-      if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pinch=Math.hypot(dx,dy);this._d2=true;drag=false;}
+      if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;pinch=Math.hypot(dx,dy);this._d2=true;drag=false;this._lastInteract=performance.now();}
     },{passive:true});
     this.canvas.addEventListener('touchmove',e=>{
       if(e.touches.length===2){const dx=e.touches[0].clientX-e.touches[1].clientX,dy=e.touches[0].clientY-e.touches[1].clientY;
-        const d=Math.hypot(dx,dy);this.cam.r=clamp(this.cam.r*pinch/d,3.2,20);pinch=d;}
+        const d=Math.hypot(dx,dy);this.cam.r=clamp(this.cam.r*pinch/d,3.2,20);pinch=d;this._lastInteract=performance.now();}
     },{passive:true});
     this.canvas.addEventListener('touchend',()=>this._d2=false);
   }
@@ -454,15 +456,18 @@ class Viewer{
       const m=new THREE.Mesh(sphereGeo[at.el],new THREE.MeshPhongMaterial({color:col,shininess:55,
         specular:0x33445c, emissive:tag==='flag'&&this.opts.flags?0x55101b:0x000000}));
       m.position.copy(at.p); this.group.add(m);
-      if(this.opts.vdw){
+      if(this.opts.vdw && this.opts.vdwScale>0){
         const sev=atomSev.get(i)||0;
         const strong=tag==='flag'||sev>=.45;          // 强空间冲突才染红
         const isBig=(tag==='me'||tag==='tb');
+        const opScale=Math.min(1,this.opts.vdwScale+.18);   // 缩小时保留可见度
         const vm=new THREE.Mesh(vdwGeo[at.el],new THREE.MeshPhongMaterial({
           color:strong?0xff4d66:col, transparent:true,
-          opacity:strong?.22:(isBig?.16:.10),
+          opacity:(strong?.22:(isBig?.16:.10))*opScale,
           depthWrite:false, shininess:90}));
-        vm.position.copy(at.p); this.group.add(vm);
+        vm.position.copy(at.p);
+        if(this.opts.vdwScale!==1) vm.scale.setScalar(this.opts.vdwScale);
+        this.group.add(vm);
       }
       if(this.opts.labels&&at.label){
         const sp=makeSprite(at.label, tag==='me'?'#8fc2ff':tag==='tb'?'#7feadd':'#cfe0f5');
@@ -485,7 +490,8 @@ class Viewer{
   }
   render(){
     if(!this.wrap.offsetParent) return;
-    if(this.opts.rotate) this.cam.theta+=.0032;
+    const now=performance.now();
+    if(this.opts.rotate && now-this._lastInteract>1500) this.cam.theta+=.0032;
     const {r,phi,theta,tx,ty,tz}=this.cam;
     this.camera.position.set(tx+r*Math.sin(phi)*Math.sin(theta), ty+r*Math.cos(phi), tz+r*Math.sin(phi)*Math.cos(theta));
     this.camera.lookAt(tx,ty,tz);
@@ -704,15 +710,33 @@ function initViewers(){
 /* ============================================================
    工具栏通用
 ============================================================ */
+function syncVdwBtn(btn,vw){
+  const s=vw.opts.vdwScale;
+  const label=s<.05?'关':s<.85?'半':'实';
+  btn.textContent='◯ 填充:'+label;
+  btn.classList.toggle('on',s>.05);
+}
 function bindToolbar(id,vw,onChange){
   document.getElementById(id).querySelectorAll('[data-toggle]').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const key=btn.dataset.toggle;
       const map={vdw:'vdw',rot:'rotate',label:'labels',angle:'angleLabel',flag:'flags',aecolor:'aeColor'};
-      vw.opts[map[key]]=!vw.opts[map[key]];
-      btn.classList.toggle('on',vw.opts[map[key]]);
+      const optKey=map[key];
+      if(optKey==='vdw'){
+        // 三档循环:关(0) → 半(.6) → 实(1)
+        const cur=vw.opts.vdwScale;
+        const nxt=cur<.05?.6:cur<.85?1:0;
+        vw.opts.vdwScale=nxt;
+        vw.opts.vdw=nxt>0;
+        syncVdwBtn(btn,vw);
+      }else{
+        vw.opts[optKey]=!vw.opts[optKey];
+        btn.classList.toggle('on',vw.opts[optKey]);
+      }
       onChange&&onChange();
     });
+    // 初始同步 vdw 按钮文字
+    if(btn.dataset.toggle==='vdw') syncVdwBtn(btn,vw);
   });
   document.getElementById(id).querySelectorAll('[data-act]').forEach(btn=>{
     btn.addEventListener('click',()=>{

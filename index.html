@@ -212,24 +212,24 @@ tr:hover td{background:rgba(79,156,255,.04)}
 
 /* ---------- 移动端响应式 (≤768px) ---------- */
 @media(max-width:768px){
-  html,body{overflow:auto;height:auto}
+  html,body{overflow-x:hidden;overflow-y:auto;height:auto}
   .app{flex-direction:column;height:auto;min-height:100vh}
   nav.rail{
-    width:auto;flex-direction:row;align-items:center;gap:4px;padding:6px 8px;
-    overflow-x:auto;-webkit-overflow-scrolling:touch;position:sticky;top:0;z-index:30;
-    border-right:none;border-bottom:1px solid var(--line);scrollbar-width:none
+    width:auto;flex-direction:row;flex-wrap:wrap;align-items:center;column-gap:4px;row-gap:2px;padding:6px 8px;
+    overflow:visible;position:sticky;top:0;z-index:30;
+    border-right:none;border-bottom:1px solid var(--line)
   }
-  nav.rail::-webkit-scrollbar{display:none}
   .brand{padding:0 8px 0 0;border-bottom:none;margin-bottom:0;flex:none;border-right:1px solid var(--line);padding-right:8px}
   .brand h1{font-size:13.5px;white-space:nowrap}
   .brand p{display:none}
-  .nav-item{padding:6px 9px;margin-bottom:0;flex:none;white-space:nowrap;font-size:12.5px}
+  .nav-item{width:auto;flex:0 0 auto;padding:6px 9px;margin-bottom:0;white-space:nowrap;font-size:12.5px}
   .nav-item .sub-t{display:none}
   .nav-item .num{width:auto;margin-right:3px;font-size:10px}
-  .rail-foot{margin:0 0 0 auto;padding:0 4px;flex:none;min-width:96px}
-  .progress-wrap{margin-bottom:2px;height:4px}
-  .rail-foot .pct{font-size:10px;text-align:right}
-  main{overflow:visible;height:auto}
+  /* 手机端隐藏底部进度块,避免把导航撑成横向滚动;完成态仍有每项对勾 */
+  .rail-foot{display:none}
+  main{overflow-x:hidden;overflow-y:visible;height:auto}
+  /* 防止不换行内容把 grid 单列撑破导致整页横滑 */
+  .grid,.grid>*,.card{min-width:0;max-width:100%}
   .wrap{padding:10px 11px 60px}
   /* 页头压缩:标签胶囊 + 标题 + 说明(最多2行),把首屏让给模型和控制台 */
   .page-head{margin-bottom:8px}
@@ -237,6 +237,8 @@ tr:hover td{background:rgba(79,156,255,.04)}
   .page-head .sub{font-size:12px;margin-top:3px;line-height:1.45;
     display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
   .tagline{margin-bottom:6px;padding:1px 9px;font-size:11px}
+  .intro-hero{padding:18px 18px}
+  .intro-hero .deco{display:none}
   /* viewer 高度随屏高自适应:矮屏自动缩小,保证标题/模型/工具栏/首组控件同屏 */
   .viewer-wrap{height:min(44vh,320px);height:clamp(190px,calc(100dvh - 368px),320px)}
   .vbadge{top:8px;left:8px;gap:4px}
@@ -244,10 +246,9 @@ tr:hover td{background:rgba(79,156,255,.04)}
   /* subviews 移出 viewer card 后独立成卡片 */
   .subviews{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);
     border-radius:var(--radius);box-shadow:var(--shadow);margin-top:12px;overflow:hidden}
-  /* 工具栏横向滚动,按钮不挤压 */
-  .toolbar{gap:6px;padding:6px 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap}
-  .toolbar::-webkit-scrollbar{display:none}
-  .tbtn{font-size:12px;padding:7px 11px;flex:none;white-space:nowrap}
+  /* 工具栏自动换行:所有按钮直接可见,不需要左右滑动 */
+  .toolbar{gap:6px;padding:6px 8px;flex-wrap:wrap}
+  .tbtn{font-size:12px;padding:7px 10px;flex:0 1 auto;white-space:nowrap}
   .chip-row{flex-wrap:wrap;gap:6px}
   .chip{font-size:12px;padding:7px 11px}
   /* 覆盖 HTML 内联的 10px 行间距,省垂直空间 */
@@ -290,24 +291,42 @@ tr:hover td{background:rgba(79,156,255,.04)}
 @media(max-width:480px){
   .wrap{padding:8px 9px 52px}
   /* 主流手机逻辑宽多为 360–430:矮屏自动缩模型,保证控制台首屏可见 */
-  .viewer-wrap{height:min(40vh,260px);height:clamp(185px,calc(100dvh - 406px),320px)}
+  .viewer-wrap{height:min(40vh,260px);height:clamp(145px,calc(100dvh - 429px),320px)}
   .page-head{margin-bottom:5px}
   .page-head h2{font-size:15.5px}
   .tagline{margin-bottom:3px}
   /* 06 控制台层级最多,该页说明在手机上只留一行 */
   body[data-page="disub"] .page-head .sub{-webkit-line-clamp:1}
-  .toolbar{padding:5px 10px}
+  /* 超窄屏:工具栏纯图标单行排列,无需横滑也不占第二行;文字收进 title */
+  .toolbar{flex-wrap:nowrap;gap:4px;padding:5px 6px;overflow:hidden}
+  .tbtn{flex:1 1 0;min-width:0;justify-content:center;padding:7px 4px;gap:0;
+    font-size:0;line-height:1;white-space:nowrap}
+  .tbtn::before{content:attr(data-micon);font-size:15px;line-height:1}
   .grid{gap:8px}
   .card-h{padding:8px 13px}
   .card-b{padding:9px 11px}
   .ctl-block h4{margin-bottom:3px}
   .ctl-block .chip-row[style],.ctl-block .seg[style]{margin-bottom:4px !important}
   .seg button{padding:6px 11px}
-  .tbtn, .chip{font-size:11.5px;padding:7px 10px}
-  .brand h1{font-size:12.5px}
-  .nav-item{padding:5px 8px;font-size:12px}
+  .chip{font-size:11.5px;padding:7px 10px}
+  /* 基团选择只留符号(A 值长按 title 查看),8 个按钮压进同一行 */
+  .group-row{gap:3px}
+  .group-row .chip{font-size:11px;padding:6px 5px}
+  .group-row .chip small{display:none}
+  nav.rail{padding:5px 6px;column-gap:3px;row-gap:1px}
+  /* 小屏只保留主题/语言图标,隐藏站点名,把导航压成两行 */
+  .brand{border-right:none;padding:0 4px 0 0}
+  .brand h1{display:none}
+  .nav-item{padding:4px 6px;font-size:11px;gap:5px}
+  .nav-item .num{font-size:9px;margin-right:2px}
   .ctl-block{margin-bottom:10px}
   .newman-canvas, .chart-canvas{height:150px}
+}
+/* 更窄的手机:隐藏导航序号、收紧边距,保证 7 个标签两行放完 */
+@media(max-width:400px){
+  nav.rail{padding:5px 4px;column-gap:2px}
+  .nav-item{padding:4px 5px;gap:0}
+  .nav-item .num{display:none}
 }
 </style>
 </head>

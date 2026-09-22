@@ -881,13 +881,18 @@ function syncVdwBtn(btn,vw){
   const en=typeof LANG!=='undefined'&&LANG==='en';
   const label=s<.05?(en?'Off':'关'):s<.85?(en?'Half':'半'):(en?'Full':'实');
   btn.textContent=(en?'◯ Fill:':'◯ 填充:')+label;
+  btn.title=(en?'Space fill: ':'空间填充:')+(s<.05?(en?'Off':'关'):s<.85?(en?'Half':'半'):(en?'Full':'实'));
   btn.classList.toggle('on',s>.05);
 }
 // 纯显示类开关:只热更新样式,不重建分子(消除填充/标签切换卡顿)
 const DISPLAY_TOGGLES={label:'labels',angle:'angleLabel',flag:'flags',aecolor:'aeColor',clash:'clash',rot:'rotate'};
+// 超窄屏(≤480)工具栏改用纯图标单行显示,data-micon 供 CSS ::before 读取
+const TB_ICON={vdw:'◉',rot:'⟳',pan:'✥',angle:'∠',clash:'⚠',label:'🏷',flag:'⚑',aecolor:'🎨'};
 function bindToolbar(id,vw,onChange){
   document.getElementById(id).querySelectorAll('[data-toggle]').forEach(btn=>{
     const key=btn.dataset.toggle;
+    btn.dataset.micon=TB_ICON[key]||'•';
+    if(!btn.title) btn.title=btn.textContent.trim();
     if(key==='vdw') syncVdwBtn(btn,vw);
     else if(DISPLAY_TOGGLES[key]) btn.classList.toggle('on',!!vw.opts[DISPLAY_TOGGLES[key]]);
     btn.addEventListener('click',()=>{
@@ -901,6 +906,7 @@ function bindToolbar(id,vw,onChange){
         vw.panMode=!vw.panMode;
         btn.classList.toggle('on',vw.panMode);
         btn.textContent=vw.panMode?'✥ 平移中':'✥ 平移';
+        btn.title=vw.panMode?'退出平移':'平移视图';
       }else if(DISPLAY_TOGGLES[key]){
         const ok=DISPLAY_TOGGLES[key];
         vw.opts[ok]=!vw.opts[ok];
@@ -910,6 +916,8 @@ function bindToolbar(id,vw,onChange){
     });
   });
   document.getElementById(id).querySelectorAll('[data-act]').forEach(btn=>{
+    btn.dataset.micon=btn.dataset.act==='flip'?'🔄':'↺';
+    if(!btn.title) btn.title=btn.dataset.act==='flip'?'翻环':'复位视角';
     btn.addEventListener('click',()=>{
       if(btn.dataset.act==='resetView')vw.resetView();
       if(btn.dataset.act==='flip')onChange&&onChange('flip');
@@ -1229,7 +1237,7 @@ function buildGroupRows(){
   ['g1-row','g2-row'].forEach((rid,row)=>{
     const wrap=document.getElementById(rid);
     wrap.innerHTML=DISUB_GROUPS.map(g=>
-      `<button class="chip${(row?disub.g2:disub.g1)===g?' on':''}" data-g="${g}">${GROUP_LABEL[g]}<small> ${AVAL[g]}</small></button>`
+      `<button class="chip${(row?disub.g2:disub.g1)===g?' on':''}" data-g="${g}" title="${GROUP_CN[g]} · A=${AVAL[g]} kJ/mol">${GROUP_LABEL[g]}<small> ${AVAL[g]}</small></button>`
     ).join('');
     wrap.querySelectorAll('[data-g]').forEach(b=>b.addEventListener('click',()=>{
       if(row===0)disub.g1=b.dataset.g; else disub.g2=b.dataset.g;

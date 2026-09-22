@@ -80,8 +80,9 @@ section.page.show{display:block}
 .viewer-wrap{position:relative;height:430px;border-radius:0;background:
   linear-gradient(180deg,#0e1826,#0c1420);overflow:hidden}
 .viewer-wrap canvas{position:absolute;inset:0;width:100%;height:100%}
-.viewer-wrap .mol-canvas{cursor:grab}
+.viewer-wrap .mol-canvas{cursor:grab;z-index:1}
 .viewer-wrap .mol-canvas:active{cursor:grabbing}
+.viewer-wrap .ov-canvas{pointer-events:none;z-index:2}   /* overlay 不挡 mol-canvas 的拖拽事件 */
 .vbadge{position:absolute;top:12px;left:12px;display:flex;flex-direction:column;gap:6px;z-index:5;pointer-events:none}
 .vbadge span{font-size:11.5px;background:rgba(15,23,36,.72);border:1px solid var(--line2);
   padding:3px 10px;border-radius:14px;color:var(--mut);backdrop-filter:blur(4px)}
